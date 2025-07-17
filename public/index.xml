@@ -20,7 +20,7 @@
       <link>http://localhost:1313/about/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>http://localhost:1313/about/</guid>
-      <description>&lt;p&gt;Wahey!! I am aspiring to become the best pwner in the world&lt;/p&gt;</description>
+      <description>&lt;p&gt;Wahey!! I am aspiring to become the best pwner in the world&#xA;Enjoy my rambling about stuff&lt;/p&gt;</description>
     </item>
   </channel>
 </rss>
