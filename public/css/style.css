@@ -1,11 +1,17 @@
-body { 
-	visibility: hidden 
+body {
+  visibility: hidden
 }
 
 .navmargin {
-	margin-top: 2em;
+  margin-top: 2em;
 }
 
 h2 {
-    white-space: normal;
+  white-space: normal;
+}
+
+ol {
+  list-style-type: decimal !important;
+  margin-left: 1.5em;
+  padding-left: 1em;
 }
