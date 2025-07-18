@@ -60,71 +60,96 @@
     </div>
     <p class="lead"></p>
     <h4 id="tldr">TLDR;</h4>
-<p>Liardancer is a heap pwn challenge from the June NYP Infosec 2025 written by <em><strong>cf</strong></em>.
+<p>Liardancer is a heap pwn challenge from the June NYP Infosec 2025 CTF written by <a href="https://wrenches.online/nyp.html">cf</a> (check her writeup out).
 It is a simple <strong>tcache poisoning</strong> into a <strong>Global Offset Table(GOT)</strong> overwrite, however with the security features of pointer mangling and the enforcement of 16 byte alignment for pointers returned by malloc().</p>
 <h4 id="prerequisites">Prerequisites</h4>
 <p>To do this exploit, we need to have a basic understanding of malloc(), free(), tcache , the GOT and the heap.</p>
-<h4 id="here-is-a-quick-run-through-i-aint-writing-a-lecture">Here is a quick run through, I ain&rsquo;t writing a lecture</h4>
+<h4 id="here-is-a-quick-rundown-i-aint-writing-a-lecture">Here is a quick rundown, I ain&rsquo;t writing a lecture</h4>
 <ol>
 <li>Heap is a region of dynamically allocated memory that the developer can request extra memory from.</li>
-<li><code>malloc()</code> is a function that requests memory from the heap. It returns a pointer to the chunk of memory.</li>
+<li><code>malloc()</code> is a function that requests memory from the heap. It returns a pointer to a chunk of memory.</li>
 <li><code>free()</code> is a function that releases the memory allocated by <code>malloc()</code> back into bins for recycling.</li>
 <li>tcache is an example of a bin. When memory gets freed that chunk goes into the tcache which is a singly-linked list, so <code>malloc()</code> can quickly reuse these chunks without asking the system for new memory.</li>
+<li>Global Offset Table is a table that stores the addresses of external functions (like those from libc), allowing programs to resolve functions addresses at runtime via dynamic linking.</li>
 </ol>
 <h4 id="binary-protections">Binary Protections</h4>
 <p>I like to use the protections to narrow down my options in exploitation, so this is my first step.</p>
 <ol>
-<li><strong>Partial RELRO</strong> &ndash; This means a GOT overwrite is possible</li>
+<li><strong>Partial RELRO</strong> &ndash; This means a GOT overwrite is possible.</li>
 <li><strong>Stack Canary</strong> &ndash; This means that there is a secret value on the stack I must leak if I want to do a buffer overflow.</li>
 <li><strong>NX enabled</strong> &ndash; This is a common protection that marks the stack as a non-executable(NX) region of memory, so shellcode cannot be executed.</li>
 <li><strong>No PIE</strong> &ndash; Position Independent Executable. This means that the binary starts at the same address each time, making exploitation much easier.</li>
 </ol>
 <p>Since this binary is compiled against Glibc 2.38, there are some security features introduced to protect singly-linked lists like the tcache.</p>
 <ol>
-<li>16 byte chunk alignment &ndash; which means that pointers returned by <code>malloc()</code> must be divisible by 16 (i.e., end in 0x0)</li>
+<li>16 byte chunk alignment &ndash; Which means that pointers returned by <code>malloc()</code> must be divisible by 16 (i.e., end in 0x0)</li>
 <li>Pointer Mangling &ndash; This is a basic form of pointer obfuscation. The forward pointer (fd) which points to the next free chunk in the list is not stored directly, instead, it goes through another step to obfuscate the pointer as shown below.</li>
 </ol>
-<p><code>fd = (chunk_address &gt;&gt; 12) ^ next chunk in list(real fd)</code></p>
-<p>fd is the value actually stored
-heap address is the address of the chunk which is then bit shifted by 12 and XOR with target address</p>
+<p><code>fd = (current_chunk_address &gt;&gt; 12) ^ next chunk in list(real fd)</code></p>
+<p><code>fd</code> is the value actually stored</p>
+<p><code>current_chunk_address</code> is the address of the chunk which is then bit shifted by 12 and XOR with the real fd.</p>
 <h4 id="source-code-review">Source Code Review</h4>
 <p>Upon opening the source code, I immediately saw the <code>win()</code> function staring at me, so I knew that I had to somehow redirect code execution back to that function to win.</p>
-<p><img src="images/winfunc.png" alt="win function"></p>
+<p><img src="/post/liardancer/images/winfunc.png" alt="win function"></p>
 <p>I also included the sizes of the variables <code>MAX_DANCES</code> and <code>DANCE_SIZE</code></p>
 <p>This challenge has <strong>3</strong> main functionalities. A create, delete and edit. This instantly made me think that there was a possible Use-After-Free in the program so that&rsquo;s how I started digging.</p>
 <h4 id="create">Create</h4>
 <p><code>create_dance()</code> just allocates a chunk of 256 bytes at the index you desire, letting you add in some data too. It is also important to note the <code>printf()</code> function also prints out the address of the dance which will be our heap leak. <strong>It is crucial to our exploit</strong>.
-<img src="images/createdance.png" alt="create dance"></p>
+<img src="/post/liardancer/images/createdance.png" alt="create dance"></p>
 <h4 id="delete">Delete</h4>
-<p><code>delete_dance()</code> frees the dance at the index you input. The problem is when a chunk is freed, the pointer still points to that chunk, a dangling pointer, and should be zeroed out by the developer like <code>dances[index] = NULL;</code> to prevent accessing freed memory.
-<img src="images/delete.png" alt="delete dance"></p>
-<p>Now we know that there is a dangling pointer&hellip; I wonder if I could access it.</p>
+<p><code>delete_dance()</code> frees the dance at the index you input. The problem is when a chunk is freed, the pointer still points to that chunk making a dangling pointer, and should be zeroed out by the developer like <code>dances[index] = NULL;</code> to prevent accessing freed memory. It is not done here.
+<img src="/post/liardancer/images/delete.png" alt="delete dance"></p>
+<p>Now we know that there is a dangling pointer&hellip; I wonder if I could access it 🤔.</p>
 <h4 id="edit">Edit</h4>
 <p><code>edit_dance()</code> lets you edit the data at the dance. Thats it. However, in combination with the dangling pointer from <code>delete_dance()</code>, we can edit the data of freed chunks. Hence, a Use-After-Free is born.
-<img src="images/edit.png" alt="edit dance"></p>
+<img src="/post/liardancer/images/edit.png" alt="edit dance"></p>
 <h4 id="tcache-poisoning-and-got-overwrite">tcache poisoning and GOT overwrite</h4>
-<p>tcache poisoning aims to corrupt the fd(forward pointer) of the chunks in the tcache bin, tricking <code>malloc()</code> into returning a pointer to an arbitrary location. If my arbitrary location just so happens to be somewhere in the Global Offset Table(GOT), I can then make use of the <code>edit_dance()</code> function to edit the data at that entry to the address of <code>win()</code>. Once done, the next time the program attempts to call the function, execution jumps to <code>win()</code>. Soooooooo&hellip;</p>
+<p>tcache poisoning aims to corrupt the fd(forward pointer) of the chunks in the tcache bin, tricking <code>malloc()</code> into returning a pointer to an arbitrary location. If my arbitrary location just so happens to be somewhere in the Global Offset Table(GOT), I can then overwrite the data at that entry to the address of <code>win()</code> during my <code>create_dance()</code>. Once done, the next time the program attempts to call the function, execution jumps to <code>win()</code>. Soooooooo&hellip;</p>
 <h4 id="gameplan">GAMEPLAN</h4>
 <ol>
 <li>Corrupt fd pointer of a chunk.</li>
-<li><code>malloc()</code> to get my &lsquo;chunk&rsquo; at GOT back.</li>
-<li>Use <code>edit_dance()</code> to change the data at the GOT address to <code>win()</code>.</li>
+<li><code>malloc()</code> to get my pointer to GOT back so I can edit it.</li>
+<li>Simultaneously change the data at that pointer to <code>win()</code> as part of the input for <code>create_dance()</code></li>
 <li>Call the function I edited.</li>
 <li>💰 PROFIT!! 💰</li>
 </ol>
-<h4 id="exploit">Exploit</h4>
-<p>Since this binary has no PIE,the addresses are fixed so we can just go shopping for them first. We need the address of <code>win()</code> as well as the address of a victim entry in the GOT.</p>
-<h4 id="to-find-these">To find these:</h4>
+<p>Enjoy my &lsquo;hand-drawn&rsquo; diagram.</p>
+<h4 id="exploitation">Exploitation</h4>
+<p>Since this binary has no PIE, the addresses are fixed so we can just go shopping for them first. We need the address of <code>win()</code> as well as the address of a victim entry in the GOT.</p>
+<h4 id="to-find-win-and-victim-entry">To find <code>win()</code> and victim entry:</h4>
 <p><code>objdump -t chal</code> gives me the symbol table of the binary allowing me to easily find the address of <code>win()</code>.</p>
+<p><img src="/post/liardancer/images/symboltable.png" alt="symbol table"></p>
 <p><code>objdump -R chal</code> gives me the relocation table, which shows shows my GOT entries.</p>
-<p>Now to find a suitable victim, remember that the address of this victim must end in 0x0 and also be called relatively often and early in the program to avoid crashes. The most suitable option here would be <code>printf()</code>.</p>
-<p>Next, I create once and store the heap leak that I mentioned was crucial, it will be used in my pointer mangling step.
+<p><img src="/post/liardancer/images/relocationtable.png" alt="relocation table"></p>
+<p>Now to find a suitable victim, remember that the address of this victim must end in 0x0 and also be called relatively often and early in the program to avoid crashes. The most suitable option here would be <code>getchar()</code>.</p>
+<h4 id="exploit-script">Exploit script</h4>
+<p>Here is the set up of my script.
+<img src="/post/liardancer/images/scriptsetup.png" alt="script set up"></p>
+<p>First, I create once and store the heap leak that I mentioned was crucial, it will be used in my pointer mangling step.
 I create again, so now there are 2 chunks in the heap so that when I free it, <strong>at least one chunk</strong> will have a valid fd for me to corrupt.</p>
-<p>Consequently, I free both those chunks I created so they end up in the tcache.
-show tcache bin here</p>
+<p><img src="/post/liardancer/images/createtwice.png" alt="create twice"></p>
+<p>Next, I free both those chunks I created so they end up in the tcache.
+show tcache bin here
+<img src="/post/liardancer/images2free.png" alt="2free"></p>
 <p>Then, using <code>edit_dance()</code>, I change the dance at 1 to my mangled address.</p>
-<p>After that, I <code>malloc()</code> twice, once to get chunk 1 back from the bin then once again to get the pointer to my GOT. Now the allocator thinks that the GOT address is a chunk, I am free to edit it however I want, so I edit it to <code>win()</code>. Next time the program calls <code>printf()</code>, <code>win()</code> gets executed instead</p>
+<p><img src="/post/liardancer/images/edit1.png" alt="edit"></p>
+<p>After that, I <code>malloc()</code> twice, once to get chunk 1 back from the bin then once again to get the pointer to my GOT. Since in <code>create_dance()</code> I am able to input a dance description, I change it to <code>win()</code>. Next time the program calls <code>getchar()</code>, <code>win()</code> gets executed instead</p>
+<p><img src="/post/liardancer/images/finalstep.png" alt="final step"></p>
 <p>Andddd tada the flag is ours</p>
+<p><img src="/post/liardancer/images/flagisours.png" alt="flag is ours"></p>
+<h4 id="stuff">Stuff</h4>
+<p>Thanks for reading my first write up, I have no idea what I am doing, Thanks a lot.</p>
+<p>Special thanks to <a href="https://kaligulaarmblessed.github.io/">Kaligula</a> for giving me the confidence to actually start a blog. Wahey!!!</p>
+<p>This writeup was a little redemption arc for me as I could not solve this challenge during the actual competition so I did it now.</p>
+<h4 id="super-secret-cool-fun-fact-section">Super secret cool fun fact section</h4>
+<p>Astute readers might realise that in the pointer mangling step <code>fd = (current_chunk_address &gt;&gt; 12) ^ next chunk in list(real fd)</code>, I said that we have to use the current chunk&rsquo;s address but I used the address of chunk 0 as my <code>current_chunk_address</code> instead of the address of chunk 1 in the formula. This is because when we bitshift by 12, we essentially remove the lower 12 bits which are the distinct bits, leaving the top bits the same.</p>
+<p>For example,</p>
+<p>chunk 0 at 0x555555559260</p>
+<p>chunk 1 at 0x5555555592a0</p>
+<p>When bitshifted by 12</p>
+<p>0x555555559260 &raquo; 12 = 0x555555559</p>
+<p>0x5555555592a0 &raquo; 12 = 0x555555559</p>
+<p>As you can see, they are the same so we can just use them interchangeably. As long as the chunks are allocated within the same 4kb memory page then <code>current_chunk_address &gt;&gt; 12</code> will always be the same.</p>
 
     <h4><a href="http://localhost:1313/">Back to Home</a></h4>
 </div>

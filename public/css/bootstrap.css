@@ -245,7 +245,8 @@ body {
   font-size: 18px;
   line-height: 20px;
   color: #bbbbbb;
-  background-color: #000084;
+  background-color: #00006b;
+  /* original color is #000084 */
 }
 
 a {
@@ -880,6 +881,11 @@ li {
   padding-left: 0;
   margin-left: 0;
   line-height: 20px;
+}
+
+li::marker {
+  color: #fefe54;
+  /* number color */
 }
 
 ul.unstyled,
