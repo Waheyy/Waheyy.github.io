@@ -8,7 +8,7 @@ tags = ["heap", "pwn"]
 
 #### TLDR;
 
-Liardancer is a heap pwn challenge from the June NYP Infosec 2025 written by ***cf***. 
+Liardancer is a heap pwn challenge from the June NYP Infosec 2025 written by [cf](https://wrenches.online/nyp.html) (check her writeup out). 
 It is a simple **tcache poisoning** into a **Global Offset Table(GOT)** overwrite, however with the security features of pointer mangling and the enforcement of 16 byte alignment for pointers returned by malloc().
 
 #### Prerequisites
@@ -33,10 +33,11 @@ Since this binary is compiled against Glibc 2.38, there are some security featur
 1. 16 byte chunk alignment -- which means that pointers returned by `malloc()` must be divisible by 16 (i.e., end in 0x0)
 1. Pointer Mangling -- This is a basic form of pointer obfuscation. The forward pointer (fd) which points to the next free chunk in the list is not stored directly, instead, it goes through another step to obfuscate the pointer as shown below. 
 
-`fd = (chunk_address >> 12) ^ next chunk in list(real fd)` 
+`fd = (current_chunk_address >> 12) ^ next chunk in list(real fd)` 
 
-fd is the value actually stored
-heap address is the address of the chunk which is then bit shifted by 12 and XOR with target address 
+`fd` is the value actually stored
+
+`current_chunk_address` is the address of the chunk which is then bit shifted by 12 and XOR with the real fd.
 
 #### Source Code Review
 Upon opening the source code, I immediately saw the `win()` function staring at me, so I knew that I had to somehow redirect code execution back to that function to win.
@@ -52,10 +53,10 @@ This challenge has **3** main functionalities. A create, delete and edit. This i
 ![create dance](images/createdance.png)
 
 #### Delete
-`delete_dance()` frees the dance at the index you input. The problem is when a chunk is freed, the pointer still points to that chunk, a dangling pointer, and should be zeroed out by the developer like `dances[index] = NULL;` to prevent accessing freed memory.
+`delete_dance()` frees the dance at the index you input. The problem is when a chunk is freed, the pointer still points to that chunk making a dangling pointer, and should be zeroed out by the developer like `dances[index] = NULL;` to prevent accessing freed memory. It is not done here. 
 ![delete dance](images/delete.png)
 
-Now we know that there is a dangling pointer... I wonder if I could access it. 
+Now we know that there is a dangling pointer... I wonder if I could access it 🤔. 
 
 #### Edit
 `edit_dance()` lets you edit the data at the dance. Thats it. However, in combination with the dangling pointer from `delete_dance()`, we can edit the data of freed chunks. Hence, a Use-After-Free is born. 
@@ -67,31 +68,71 @@ tcache poisoning aims to corrupt the fd(forward pointer) of the chunks in the tc
 #### GAMEPLAN
 1. Corrupt fd pointer of a chunk. 
 1. `malloc()` to get my 'chunk' at GOT back.
-1. Use `edit_dance()` to change the data at the GOT address to `win()`. 
+1. Simultaneously change the address to `win()` as part of the input for `create_dance()`
 1. Call the function I edited. 
 1. 💰 PROFIT!! 💰
+
+Enjoy my 'hand-drawn' diagram.
 
 #### Exploit 
 Since this binary has no PIE,the addresses are fixed so we can just go shopping for them first. We need the address of `win()` as well as the address of a victim entry in the GOT.
 
-#### To find these:
+#### To find `win()` and victim entry:
 
 `objdump -t chal` gives me the symbol table of the binary allowing me to easily find the address of `win()`.
 
+![symbol table](images/symboltable.png)
+
 `objdump -R chal` gives me the relocation table, which shows shows my GOT entries.
 
-Now to find a suitable victim, remember that the address of this victim must end in 0x0 and also be called relatively often and early in the program to avoid crashes. The most suitable option here would be `printf()`. 
+![relocation table](images/relocationtable.png)
 
-Next, I create once and store the heap leak that I mentioned was crucial, it will be used in my pointer mangling step.
-I create again, so now there are 2 chunks in the heap so that when I free it, **at least one chunk** will have a valid fd for me to corrupt. 
+Now to find a suitable victim, remember that the address of this victim must end in 0x0 and also be called relatively often and early in the program to avoid crashes. The most suitable option here would be `getchar()`.
 
-Consequently, I free both those chunks I created so they end up in the tcache.
-show tcache bin here 
+#### Exploit script 
+Here is the set up of my script.
+![script set up](images/scriptsetup.png)
+
+First, I create once and store the heap leak that I mentioned was crucial, it will be used in my pointer mangling step.
+I create again, so now there are 2 chunks in the heap so that when I free it, **at least one chunk** will have a valid fd for me to corrupt.
+
+![create twice](images/createtwice.png)
+
+Next, I free both those chunks I created so they end up in the tcache.
+show tcache bin here
+![2free](images/2free.png)
 
 Then, using `edit_dance()`, I change the dance at 1 to my mangled address. 
 
-After that, I `malloc()` twice, once to get chunk 1 back from the bin then once again to get the pointer to my GOT. Now the allocator thinks that the GOT address is a chunk, I am free to edit it however I want, so I edit it to `win()`. Next time the program calls `printf()`, `win()` gets executed instead
+![edit](images/edit1.png)
 
-Andddd tada the flag is ours 
+After that, I `malloc()` twice, once to get chunk 1 back from the bin then once again to get the pointer to my GOT. Since in `create_dance()` I am able to input a dance description, I change it to `win()`. Next time the program calls `getchar()`, `win()` gets executed instead
+
+![final step](images/finalstep.png)
+
+Andddd tada the flag is ours
+
+![flag is ours](images/flagisours.png)
+
+#### Stuff
+Thanks for reading my first write up, I have no idea what I am doing, Thanks a lot. Special thanks to [Kaligula](https://kaligulaarmblessed.github.io/) for giving me the confidence to actually start a blog. Wahey!!!
+
+#### Super secret cool fun fact section
+Astute readers might realise that in the pointer mangling step `fd = (current_chunk_address >> 12) ^ next chunk in list(real fd)`, I said that we have to use the current chunk's address but I used the address of chunk 0 as my `current_chunk_address` instead of the address of chunk 1 in the formula. This is because when we bitshift by 12, we essentially remove the lower 12 bits which are the distinct bits, leaving the top bits the same. 
+
+For example,
+
+chunk 0 at 0x555555559260
+
+chunk 1 at 0x5555555592a0
+
+When bitshifted by 12 
+
+0x555555559260 >> 12 = 0x555555559
+
+0x5555555592a0 >> 12 = 0x555555559
+
+As you can see, they are the same so we can just use them interchangeably. As long as the chunks are allocated within the same 4kb memory page then `current_chunk_address >> 12` will always be the same.
+
 
 
