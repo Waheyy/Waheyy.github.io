@@ -133,6 +133,8 @@ I create again, so now there are 2 chunks in the heap so that when I free it, <s
 <p><img src="/post/liardancer/images/tcachelayout.png" alt="tcachelayout"></p>
 <p>Then, using <code>edit_dance()</code>, I change the dance at 1 to my mangled address.</p>
 <p><img src="/post/liardancer/images/edit1.png" alt="edit"></p>
+<p>Here is another diagram to show you the overwrite.</p>
+<p><img src="/post/liardancer/images/aftercorrupt.png" alt="aftercorrupt"></p>
 <p>After that, I <code>malloc()</code> twice, once to get chunk 1 back from the bin then once again to get the pointer to my GOT. Since in <code>create_dance()</code> I am able to input a dance description, I change it to <code>win()</code>. Next time the program calls <code>getchar()</code>, <code>win()</code> gets executed instead</p>
 <p><img src="/post/liardancer/images/finalstep.png" alt="final step"></p>
 <p>Andddd tada the flag is ours</p>

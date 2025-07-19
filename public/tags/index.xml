@@ -2,25 +2,10 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Tags on Waheyyyyyyy</title>
-    <link>http://localhost:44517/tags/</link>
+    <link>https://Waheyy.github.io/tags/</link>
     <description>Recent content in Tags on Waheyyyyyyy</description>
     <generator>Hugo</generator>
     <language>en</language>
-    <lastBuildDate>Thu, 17 Jul 2025 22:36:21 +0800</lastBuildDate>
-    <atom:link href="http://localhost:44517/tags/index.xml" rel="self" type="application/rss+xml" />
-    <item>
-      <title>Heap</title>
-      <link>http://localhost:44517/tags/heap/</link>
-      <pubDate>Thu, 17 Jul 2025 22:36:21 +0800</pubDate>
-      <guid>http://localhost:44517/tags/heap/</guid>
-      <description></description>
-    </item>
-    <item>
-      <title>Pwn</title>
-      <link>http://localhost:44517/tags/pwn/</link>
-      <pubDate>Thu, 17 Jul 2025 22:36:21 +0800</pubDate>
-      <guid>http://localhost:44517/tags/pwn/</guid>
-      <description></description>
-    </item>
+    <atom:link href="https://Waheyy.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
   </channel>
 </rss>
