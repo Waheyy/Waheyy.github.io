@@ -73,8 +73,6 @@ tcache poisoning aims to corrupt the fd(forward pointer) of the chunks in the tc
 1. Call the function I edited. 
 1. 💰 PROFIT!! 💰
 
-Enjoy my 'hand-drawn' diagram.
-
 #### Exploitation 
 Since this binary has no PIE, the addresses are fixed so we can just go shopping for them first. We need the address of `win()` as well as the address of a victim entry in the GOT.
 
@@ -100,8 +98,12 @@ I create again, so now there are 2 chunks in the heap so that when I free it, **
 ![create twice](/post/liardancer/images/createtwice.png)
 
 Next, I free both those chunks I created so they end up in the tcache.
-show tcache bin here
-![2free](/post/liardancer/images2free.png)
+
+![2free](/post/liardancer/images/2free.png)
+
+This is a diagram showing the state of the tcache.
+
+![tcachelayout](/post/liardancer/images/tcachelayout.png)
 
 Then, using `edit_dance()`, I change the dance at 1 to my mangled address. 
 
