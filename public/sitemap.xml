@@ -2,14 +2,33 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://Waheyy.github.io/post/</loc>
+    <loc>http://localhost:36499/categories/</loc>
     <lastmod>2025-07-17T22:36:21+08:00</lastmod>
   </url><url>
-    <loc>https://Waheyy.github.io/</loc>
+    <loc>http://localhost:36499/categories/ctf/</loc>
     <lastmod>2025-07-17T22:36:21+08:00</lastmod>
   </url><url>
-    <loc>https://Waheyy.github.io/categories/</loc>
+    <loc>http://localhost:36499/tags/heap/</loc>
+    <lastmod>2025-07-17T22:36:21+08:00</lastmod>
   </url><url>
-    <loc>https://Waheyy.github.io/tags/</loc>
+    <loc>http://localhost:36499/post/liardancer/liardancerwriteup/</loc>
+    <lastmod>2025-07-17T22:36:21+08:00</lastmod>
+  </url><url>
+    <loc>http://localhost:36499/post/</loc>
+    <lastmod>2025-07-17T22:36:21+08:00</lastmod>
+  </url><url>
+    <loc>http://localhost:36499/tags/pwn/</loc>
+    <lastmod>2025-07-17T22:36:21+08:00</lastmod>
+  </url><url>
+    <loc>http://localhost:36499/tags/</loc>
+    <lastmod>2025-07-17T22:36:21+08:00</lastmod>
+  </url><url>
+    <loc>http://localhost:36499/</loc>
+    <lastmod>2025-07-17T22:36:21+08:00</lastmod>
+  </url><url>
+    <loc>http://localhost:36499/categories/writeup/</loc>
+    <lastmod>2025-07-17T22:36:21+08:00</lastmod>
+  </url><url>
+    <loc>http://localhost:36499/about/</loc>
   </url>
 </urlset>

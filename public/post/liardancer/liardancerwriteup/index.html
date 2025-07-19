@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="en"><head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=44517&amp;path=livereload" data-no-instant defer></script>
+<html lang="en"><head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=36499&amp;path=livereload" data-no-instant defer></script>
     <title>Waheyyyyyyy</title>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
     <meta content="utf-8" http-equiv="encoding">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="format-detection" content="telephone=no" />
     <meta name="theme-color" content="#000084" />
-    <link rel="icon" href="http://localhost:44517//favicon.ico">
-    <link rel="canonical" href="http://localhost:44517/">
+    <link rel="icon" href="http://localhost:36499//favicon.ico">
+    <link rel="canonical" href="http://localhost:36499/">
     
     
 </head>
@@ -16,7 +16,7 @@
     <div class="navbar-inner">
         <div class="container">
             <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse"></button>
-            <a class="brand" href="http://localhost:44517/">Waheyyyyyyy</a>
+            <a class="brand" href="http://localhost:36499/">Waheyyyyyyy</a>
             <div class="nav-collapse collapse">
                 <ul class="nav">
                     
@@ -62,6 +62,12 @@
     <h4 id="tldr">TLDR;</h4>
 <p>Liardancer is a heap pwn challenge from the June NYP Infosec 2025 CTF written by <a href="https://wrenches.online/nyp.html">cf</a> (check her writeup out).
 It is a simple <strong>tcache poisoning</strong> into a <strong>Global Offset Table(GOT)</strong> overwrite, however with the security features of pointer mangling and the enforcement of 16 byte alignment for pointers returned by malloc().</p>
+<h4 id="table-of-contents">Table of contents:</h4>
+<ol>
+<li>Prerequisites.</li>
+<li>Binary and Source code Review.</li>
+<li>Exploit.</li>
+</ol>
 <h4 id="prerequisites">Prerequisites</h4>
 <p>To do this exploit, we need to have a basic understanding of malloc(), free(), tcache , the GOT and the heap.</p>
 <h4 id="here-is-a-quick-rundown-i-aint-writing-a-lecture">Here is a quick rundown, I ain&rsquo;t writing a lecture</h4>
@@ -153,7 +159,7 @@ I create again, so now there are 2 chunks in the heap so that when I free it, <s
 <p>0x5555555592a0 &raquo; 12 = 0x555555559</p>
 <p>As you can see, they are the same so we can just use them interchangeably. As long as the chunks are allocated within the same 4kb memory page then <code>current_chunk_address &gt;&gt; 12</code> will always be the same.</p>
 
-    <h4><a href="http://localhost:44517/">Back to Home</a></h4>
+    <h4><a href="http://localhost:36499/">Back to Home</a></h4>
 </div>
 
 

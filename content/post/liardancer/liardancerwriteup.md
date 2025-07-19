@@ -11,6 +11,11 @@ tags = ["heap", "pwn"]
 Liardancer is a heap pwn challenge from the June NYP Infosec 2025 CTF written by [cf](https://wrenches.online/nyp.html) (check her writeup out). 
 It is a simple **tcache poisoning** into a **Global Offset Table(GOT)** overwrite, however with the security features of pointer mangling and the enforcement of 16 byte alignment for pointers returned by malloc().
 
+#### Table of contents:
+1. Prerequisites.
+1. Binary and Source code Review.
+1. Exploit.
+
 #### Prerequisites
 To do this exploit, we need to have a basic understanding of malloc(), free(), tcache , the GOT and the heap.
 
