@@ -2,18 +2,18 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Pwn on Waheyyyyyyy</title>
-    <link>http://localhost:40943/tags/pwn/</link>
+    <link>http://localhost:1313/tags/pwn/</link>
     <description>Recent content in Pwn on Waheyyyyyyy</description>
     <generator>Hugo</generator>
     <language>en</language>
     <lastBuildDate>Thu, 17 Jul 2025 22:36:21 +0800</lastBuildDate>
-    <atom:link href="http://localhost:40943/tags/pwn/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:1313/tags/pwn/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>NYP Infosec June CTF 2025 Liardancer Writeup</title>
-      <link>http://localhost:40943/post/liardancer/liardancerwriteup/</link>
+      <link>http://localhost:1313/post/liardancer/liardancerwriteup/</link>
       <pubDate>Thu, 17 Jul 2025 22:36:21 +0800</pubDate>
-      <guid>http://localhost:40943/post/liardancer/liardancerwriteup/</guid>
-      <description>&lt;h4 id=&#34;tldr&#34;&gt;TLDR;&lt;/h4&gt;&#xA;&lt;p&gt;Liardancer is a heap pwn challenge from the June NYP Infosec 2025 CTF written by &lt;a href=&#34;https://wrenches.online/nyp.html&#34;&gt;cf&lt;/a&gt; (check her writeup out).&#xA;It is a simple &lt;strong&gt;tcache poisoning&lt;/strong&gt; into a &lt;strong&gt;Global Offset Table(GOT)&lt;/strong&gt; overwrite, however with the security features of pointer mangling and the enforcement of 16 byte alignment for pointers returned by malloc().&lt;/p&gt;&#xA;&lt;h4 id=&#34;table-of-contents&#34;&gt;Table of contents:&lt;/h4&gt;&#xA;&lt;ol&gt;&#xA;&lt;li&gt;Prerequisites.&lt;/li&gt;&#xA;&lt;li&gt;Binary and Source code Review.&lt;/li&gt;&#xA;&lt;li&gt;Exploit.&lt;/li&gt;&#xA;&lt;/ol&gt;&#xA;&lt;h4 id=&#34;prerequisites&#34;&gt;Prerequisites&lt;/h4&gt;&#xA;&lt;p&gt;To do this exploit, we need to have a basic understanding of malloc(), free(), tcache , the GOT and the heap.&lt;/p&gt;</description>
+      <guid>http://localhost:1313/post/liardancer/liardancerwriteup/</guid>
+      <description>&lt;h4 id=&#34;tldr&#34;&gt;TLDR;&lt;/h4&gt;&#xA;&lt;p&gt;Liardancer is a heap pwn challenge from the June NYP Infosec 2025 CTF written by &lt;a href=&#34;https://wrenches.online/nyp.html&#34;&gt;cf&lt;/a&gt; (check her writeup out).&#xA;It is a simple &lt;strong&gt;tcache poisoning&lt;/strong&gt; into a &lt;strong&gt;Global Offset Table(GOT)&lt;/strong&gt; overwrite, however with the security features of pointer mangling and the enforcement of 16 byte alignment for pointers returned by &lt;code&gt;malloc()&lt;/code&gt;.&lt;/p&gt;&#xA;&lt;h4 id=&#34;table-of-contents&#34;&gt;Table of contents:&lt;/h4&gt;&#xA;&lt;ol&gt;&#xA;&lt;li&gt;Prerequisites.&lt;/li&gt;&#xA;&lt;li&gt;Binary and Source code Review.&lt;/li&gt;&#xA;&lt;li&gt;Exploit.&lt;/li&gt;&#xA;&lt;/ol&gt;&#xA;&lt;h4 id=&#34;prerequisites&#34;&gt;Prerequisites&lt;/h4&gt;&#xA;&lt;p&gt;To do this exploit, we need to have a basic understanding of &lt;code&gt;malloc()&lt;/code&gt;, &lt;code&gt;free()&lt;/code&gt;, tcache , the GOT and the heap.&lt;/p&gt;</description>
     </item>
   </channel>
 </rss>
