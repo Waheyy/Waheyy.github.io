@@ -120,7 +120,7 @@ Here is another diagram to show you the overwrite.
 
 After that, I `malloc()` twice, once to get chunk 1 back from the bin then once again to get the pointer to my GOT. Since in `create_dance()` I am able to input a dance description, I change it to `win()`. Next time the program calls `getchar()`, `win()` gets executed instead
 
-![final step](/post/liardancer/images/finalstep.png)
+![final step](/post/liardancer/images/finalstep1.png)
 
 Andddd tada the flag is ours
 

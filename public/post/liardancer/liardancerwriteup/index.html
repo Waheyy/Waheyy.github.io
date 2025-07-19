@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="en"><head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=36499&amp;path=livereload" data-no-instant defer></script>
+<html lang="en"><head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
     <title>Waheyyyyyyy</title>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
     <meta content="utf-8" http-equiv="encoding">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="format-detection" content="telephone=no" />
     <meta name="theme-color" content="#000084" />
-    <link rel="icon" href="http://localhost:36499//favicon.ico">
-    <link rel="canonical" href="http://localhost:36499/">
+    <link rel="icon" href="http://localhost:1313//favicon.ico">
+    <link rel="canonical" href="http://localhost:1313/">
     
     
 </head>
@@ -16,7 +16,7 @@
     <div class="navbar-inner">
         <div class="container">
             <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse"></button>
-            <a class="brand" href="http://localhost:36499/">Waheyyyyyyy</a>
+            <a class="brand" href="http://localhost:1313/">Waheyyyyyyy</a>
             <div class="nav-collapse collapse">
                 <ul class="nav">
                     
@@ -142,7 +142,7 @@ I create again, so now there are 2 chunks in the heap so that when I free it, <s
 <p>Here is another diagram to show you the overwrite.</p>
 <p><img src="/post/liardancer/images/aftercorrupt.png" alt="aftercorrupt"></p>
 <p>After that, I <code>malloc()</code> twice, once to get chunk 1 back from the bin then once again to get the pointer to my GOT. Since in <code>create_dance()</code> I am able to input a dance description, I change it to <code>win()</code>. Next time the program calls <code>getchar()</code>, <code>win()</code> gets executed instead</p>
-<p><img src="/post/liardancer/images/finalstep.png" alt="final step"></p>
+<p><img src="/post/liardancer/images/finalstep1.png" alt="final step"></p>
 <p>Andddd tada the flag is ours</p>
 <p><img src="/post/liardancer/images/flagisours.png" alt="flag is ours"></p>
 <h4 id="stuff">Stuff</h4>
@@ -159,7 +159,7 @@ I create again, so now there are 2 chunks in the heap so that when I free it, <s
 <p>0x5555555592a0 &raquo; 12 = 0x555555559</p>
 <p>As you can see, they are the same so we can just use them interchangeably. As long as the chunks are allocated within the same 4kb memory page then <code>current_chunk_address &gt;&gt; 12</code> will always be the same.</p>
 
-    <h4><a href="http://localhost:36499/">Back to Home</a></h4>
+    <h4><a href="http://localhost:1313/">Back to Home</a></h4>
 </div>
 
 
