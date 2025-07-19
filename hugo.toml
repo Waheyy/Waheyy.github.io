@@ -102,3 +102,7 @@ tag = "tags"
 
   [services.twitter]
     disableInlineCSS = true
+    
+[caches]
+  [caches.images]
+    dir = ':cacheDir/images'
