@@ -61,7 +61,7 @@
     <p class="lead"></p>
     <h4 id="tldr">TLDR;</h4>
 <p>Liardancer is a heap pwn challenge from the June NYP Infosec 2025 CTF written by <a href="https://wrenches.online/nyp.html">cf</a> (check her writeup out).
-It is a simple <strong>tcache poisoning</strong> into a <strong>Global Offset Table(GOT)</strong> overwrite, however with the security features of pointer mangling and the enforcement of 16 byte alignment for pointers returned by malloc().</p>
+It is a simple <strong>tcache poisoning</strong> into a <strong>Global Offset Table(GOT)</strong> overwrite, however with the security features of pointer mangling and the enforcement of 16 byte alignment for pointers returned by <code>malloc()</code>.</p>
 <h4 id="table-of-contents">Table of contents:</h4>
 <ol>
 <li>Prerequisites.</li>
@@ -69,7 +69,7 @@ It is a simple <strong>tcache poisoning</strong> into a <strong>Global Offset Ta
 <li>Exploit.</li>
 </ol>
 <h4 id="prerequisites">Prerequisites</h4>
-<p>To do this exploit, we need to have a basic understanding of malloc(), free(), tcache , the GOT and the heap.</p>
+<p>To do this exploit, we need to have a basic understanding of <code>malloc()</code>, <code>free()</code>, tcache , the GOT and the heap.</p>
 <h4 id="here-is-a-quick-rundown-i-aint-writing-a-lecture">Here is a quick rundown, I ain&rsquo;t writing a lecture</h4>
 <ol>
 <li>Heap is a region of dynamically allocated memory that the developer can request extra memory from.</li>
@@ -86,7 +86,7 @@ It is a simple <strong>tcache poisoning</strong> into a <strong>Global Offset Ta
 <li><strong>NX enabled</strong> &ndash; This is a common protection that marks the stack as a non-executable(NX) region of memory, so shellcode cannot be executed.</li>
 <li><strong>No PIE</strong> &ndash; Position Independent Executable. This means that the binary starts at the same address each time, making exploitation much easier.</li>
 </ol>
-<p>Since this binary is compiled against Glibc 2.38, there are some security features introduced to protect singly-linked lists like the tcache.</p>
+<p>Since this binary is compiled against Glibc 2.41, there are some security features introduced to protect singly-linked lists like the tcache.</p>
 <ol>
 <li>16 byte chunk alignment &ndash; Which means that pointers returned by <code>malloc()</code> must be divisible by 16 (i.e., end in 0x0)</li>
 <li>Pointer Mangling &ndash; This is a basic form of pointer obfuscation. The forward pointer (fd) which points to the next free chunk in the list is not stored directly, instead, it goes through another step to obfuscate the pointer as shown below.</li>
@@ -129,7 +129,7 @@ It is a simple <strong>tcache poisoning</strong> into a <strong>Global Offset Ta
 <p>Now to find a suitable victim, remember that the address of this victim must end in 0x0 and also be called relatively often and early in the program to avoid crashes. The most suitable option here would be <code>getchar()</code>.</p>
 <h4 id="exploit-script">Exploit script</h4>
 <p>Here is the set up of my script.
-<img src="/post/liardancer/images/scriptsetup.png" alt="script set up"></p>
+<img src="/post/liardancer/images/setup1.png" alt="script set up"></p>
 <p>First, I create once and store the heap leak that I mentioned was crucial, it will be used in my pointer mangling step.
 I create again, so now there are 2 chunks in the heap so that when I free it, <strong>at least one chunk</strong> will have a valid fd for me to corrupt.</p>
 <p><img src="/post/liardancer/images/createtwice.png" alt="create twice"></p>
@@ -146,7 +146,7 @@ I create again, so now there are 2 chunks in the heap so that when I free it, <s
 <p>Andddd tada the flag is ours</p>
 <p><img src="/post/liardancer/images/flagisours.png" alt="flag is ours"></p>
 <h4 id="stuff">Stuff</h4>
-<p>Thanks for reading my first write up, I have no idea what I am doing, Thanks a lot.</p>
+<p>Thanks for reading my first write up, I have no idea what I am doing. Thanks a lot.</p>
 <p>Special thanks to <a href="https://kaligulaarmblessed.github.io/">Kaligula</a> for giving me the confidence to actually start a blog. Wahey!!!</p>
 <p>This writeup was a little redemption arc for me as I could not solve this challenge during the actual competition so I did it now.</p>
 <h4 id="super-secret-cool-fun-fact-section">Super secret cool fun fact section</h4>

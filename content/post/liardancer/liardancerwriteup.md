@@ -9,7 +9,7 @@ tags = ["heap", "pwn"]
 #### TLDR;
 
 Liardancer is a heap pwn challenge from the June NYP Infosec 2025 CTF written by [cf](https://wrenches.online/nyp.html) (check her writeup out). 
-It is a simple **tcache poisoning** into a **Global Offset Table(GOT)** overwrite, however with the security features of pointer mangling and the enforcement of 16 byte alignment for pointers returned by malloc().
+It is a simple **tcache poisoning** into a **Global Offset Table(GOT)** overwrite, however with the security features of pointer mangling and the enforcement of 16 byte alignment for pointers returned by `malloc()`.
 
 #### Table of contents:
 1. Prerequisites.
@@ -17,7 +17,7 @@ It is a simple **tcache poisoning** into a **Global Offset Table(GOT)** overwrit
 1. Exploit.
 
 #### Prerequisites
-To do this exploit, we need to have a basic understanding of malloc(), free(), tcache , the GOT and the heap.
+To do this exploit, we need to have a basic understanding of `malloc()`, `free()`, tcache , the GOT and the heap.
 
 #### Here is a quick rundown, I ain't writing a lecture 
 
@@ -35,7 +35,7 @@ I like to use the protections to narrow down my options in exploitation, so this
 1. **NX enabled** -- This is a common protection that marks the stack as a non-executable(NX) region of memory, so shellcode cannot be executed. 
 1. **No PIE** -- Position Independent Executable. This means that the binary starts at the same address each time, making exploitation much easier.
 
-Since this binary is compiled against Glibc 2.38, there are some security features introduced to protect singly-linked lists like the tcache. 
+Since this binary is compiled against Glibc 2.41, there are some security features introduced to protect singly-linked lists like the tcache. 
 1. 16 byte chunk alignment -- Which means that pointers returned by `malloc()` must be divisible by 16 (i.e., end in 0x0)
 1. Pointer Mangling -- This is a basic form of pointer obfuscation. The forward pointer (fd) which points to the next free chunk in the list is not stored directly, instead, it goes through another step to obfuscate the pointer as shown below. 
 
@@ -95,7 +95,7 @@ Now to find a suitable victim, remember that the address of this victim must end
 
 #### Exploit script 
 Here is the set up of my script.
-![script set up](/post/liardancer/images/scriptsetup.png)
+![script set up](/post/liardancer/images/setup1.png)
 
 First, I create once and store the heap leak that I mentioned was crucial, it will be used in my pointer mangling step.
 I create again, so now there are 2 chunks in the heap so that when I free it, **at least one chunk** will have a valid fd for me to corrupt.
@@ -127,7 +127,7 @@ Andddd tada the flag is ours
 ![flag is ours](/post/liardancer/images/flagisours.png)
 
 #### Stuff
-Thanks for reading my first write up, I have no idea what I am doing, Thanks a lot. 
+Thanks for reading my first write up, I have no idea what I am doing. Thanks a lot. 
 
 Special thanks to [Kaligula](https://kaligulaarmblessed.github.io/) for giving me the confidence to actually start a blog. Wahey!!!
 
