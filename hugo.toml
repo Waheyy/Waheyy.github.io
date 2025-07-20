@@ -2,7 +2,7 @@ baseURL = "https://waheyy.github.io/"
 title = "Waheyyyyyyy"
 languageCode = "en"
 DefaultContentLanguage = "en" # Change this to change the site's language
-theme = "hugo.386updated"
+theme = "hugo.386"
 preserveTaxonomyNames = true
 
 [params]
