@@ -56,11 +56,37 @@
 
 <div class="row-fluid navmargin">
     <div class="page-header">
-        <h1>About - Mon, Jan 1, 0001</h1>
+        <h1>AYCEP2025 verysecretstorage Modprobe Path overwrite - Sun, Oct 26, 2025</h1>
     </div>
     <p class="lead"></p>
-    <p>Wahey!! I am aspiring to become the best pwner in the world</p>
-<p>Enjoy my rambling about stuff</p>
+    <h4 id="introduction">Introduction:</h4>
+<p>WHATS&rsquo;S UP GUYS! Welcome back to another text based youtube video. Today we will be reading a writeup about <a href="https://github.com/KaligulaArmblessed/CTF-Challenges/tree/main/AYCEP_2024/verysecretstorage">verysecretstorage</a>, a challenge made by <a href="https://kaligulaarmblessed.github.io/">Kaligula</a> for AYCEP2024 (yes I am a year late and missed out greatly). This was my first kernel heap challenge as well as my first real kernel challenge and it was pretty fun.</p>
+<h4 id="table-of-contents">Table of Contents:</h4>
+<ol>
+<li>Protections</li>
+<li>Binary analysis</li>
+<li>Exploit</li>
+</ol>
+<h4 id="protections">Protections:</h4>
+<p>Since this is my first kpwn challenge I will be going through the common protections as well as the ones that people do not talk about often in beginner writeups (in my exp pls no sue me).</p>
+<p>As usual, protections help narrow down the options so we have:</p>
+<ol>
+<li><strong>SMEP</strong> (Supervisor mode execution protection) marks all userland pages in the page table as non-executable. This prevents the kernel from executing code in userland. This means that no userland code can run with kernel privileges.</li>
+<li><strong>SMAP</strong> (Supervisor mode access prevention) prevents data access to userland pages from kernel mode. This means that you also cannot read userland memory from the kernel unless you use <code>copy_to_user()</code> and <code>copy_from_user()</code>.</li>
+<li><strong>KASLR</strong> (Kernel address space layout randomisation) this is just aslr but in the kernel. There is a special kind called fg-kaslr but I will not go into details for it here.</li>
+<li><strong>KPTI</strong> (Kernel page-table isolation) This completely separates user-space and kernel-space page tables. With this, userland does not even know that the kernel exists, only a minimal trampoline is left to handle transitions between kernel and user safely.</li>
+</ol>
+<h4 id="convenient-protections-that-are-not-set">Convenient protections that are not set:</h4>
+<ol>
+<li><strong>CONFIG_SLAB_FREELIST_RANDOM</strong> makes it so that freed objects go into the freelist in a random order instead of LIFO like normal. Its not set here so it means that there will be no need to do any heap fengshui.</li>
+<li><strong>CONFIG_STATIC_USERMODEHELPER</strong> is not set so a modprobe path overwrite is possible (foreshadowing).</li>
+<li><strong>CONFIG_SYSVIPC</strong> is not set so there are msg_msg structs.</li>
+</ol>
+<h4 id="modprobe-path-overwrite">Modprobe path overwrite:</h4>
+<p><code>modprobe</code> is a program used to load and unload kernel modules. The path to it is a kernel global variable, which by default is <code>/sbin/modprobe</code>. Very cool but how is it helpful?</p>
+<p>Well the path is stored in a kernel symbol <code>modprobe_path</code> and is also in a writable page. The program that is stored in <code>modprobe_path</code> also gets executed if we try to call <code>execve()</code> on a file whose magic bytes are unknown to the system. Sooooooooooooooooooo if we somehow overwrite <code>modprobe_path</code> and change the path to another program that we control, when a file with an unknown file signature is ran, that program is run in kernel mode which gives me arbitrary code execution with root privileges.</p>
+<h4 id="binary-analysis">Binary analysis:</h4>
+<p>Now, I did the challenge with source code but during the actual event source code was not given so I shall also practice my ghidra skills here.</p>
 
     <h4><a href="http://localhost:1313/">Back to Home</a></h4>
 </div>
