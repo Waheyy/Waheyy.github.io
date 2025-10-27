@@ -87,6 +87,33 @@
 <p>Well the path is stored in a kernel symbol <code>modprobe_path</code> and is also in a writable page. The program that is stored in <code>modprobe_path</code> also gets executed if we try to call <code>execve()</code> on a file whose magic bytes are unknown to the system. Sooooooooooooooooooo if we somehow overwrite <code>modprobe_path</code> and change the path to another program that we control, when a file with an unknown file signature is ran, that program is run in kernel mode which gives me arbitrary code execution with root privileges.</p>
 <h4 id="binary-analysis">Binary analysis:</h4>
 <p>Now, I did the challenge with source code but during the actual event source code was not given so I shall also practice my ghidra skills here.</p>
+<h4 id="setup-stuff">Setup stuff:</h4>
+<p>pic of req and box box size blah blah</p>
+<h4 id="do_create">DO_CREATE:</h4>
+<p>Allocates a box into the GFG_KERNEL account. The size of box is 0x60 so it goes into the kmalloc-96 cache. You also can add a note in.</p>
+<h4 id="do_read">DO_READ:</h4>
+<p>Reads the name and note from the box into the buffer provided by the req struct.</p>
+<h4 id="do_write">DO_WRITE:</h4>
+<p>Writes a name and note to the box.</p>
+<h4 id="do_resize">DO_RESIZE:</h4>
+<p>Resizes the note and copies the new note into it.</p>
+<h4 id="do_delete">DO_DELETE:</h4>
+<p>Deletes a box and holy crap finally a vulnerability. The function frees the note and nulls it but when it frees the box it does not null it, leaving a dangling pointer that we can fandangle via a use-after-free(UAF).</p>
+<h4 id="exploit">Exploit:</h4>
+<p>Since KASLR is active, we are going to need a kernel leak to calculate the address of <code>modprobe path</code>. How in the frick frack snick snack do we do that here?</p>
+<p>Well, in my experience so far, kernel heap challenges often get leaks by overlapping kernel structs instead of something like the unsorted bin libc leak in userland. Since I can read the boxes name and note, I wanna get something that fits into the kmalloc-96 cache and also gets me a kernel leak so scrolling through <a href="https://bsauce.github.io/2021/09/26/kernel-exploit-%E6%9C%89%E7%94%A8%E7%9A%84%E7%BB%93%E6%9E%84%E4%BD%93/">this site</a> we find a struct called <code>subprocess_info</code> that fits into kmalloc-96 and <code>work.func</code> can be leaked to get the kernel base yipee.</p>
+<p>So we allocate 2 boxes, box0 and box1. We free box0 then immediately reclaim its spot with a <code>subprocess_info</code> by calling <code>socket(22, AF_INET, 0)</code>.</p>
+<p>Since box0 is deleted but not nulled we can still read it and ta da, we get the information that <code>subprocess_info</code> is holding.</p>
+<p>This is the struct and we can see that it has a work_struct member then we dig deeper and we see that the work.func leak we need is at index 3 of the leaks.</p>
+<p>If we start the qemu with root we can also check that the leak is pointing to <code>call_usermodehelper_exec_work</code>.</p>
+<p>Since the address <code>call_usermodehelper_exec_work</code> and <code>modprobe_path</code> are all relative we can just do some math to find <code>modprobe_path</code>.
+comment the eqn i did</p>
+<p>Now that we have the <code>modprobe_path</code> address we need to resize the note to go into 0x60 cache and overwrite over box0 again and make sure that the new note size is big enough and the note address is the address of <code>modprobe_path</code>.</p>
+<p>Then we write to box0 with the new note being the path of the script that I want ran with root privileges.</p>
+<p>The script basically copies the stuff in <code>/dev/sda</code> into <code>/tmp/flag</code> as well as granting it full permissions and makes it executable. Then it makes an unknown file and runs it which should then trigger <code>modprobe_path</code> and run the script and now the flag from <code>/dev/sda</code> is inside <code>/tmp/flag</code> and we can view it</p>
+<p>WAHEY! It worked, that&rsquo;s fantabbitastic.</p>
+<p>Overall, this challenge was very fun and got me thinking in the kernel pwn mindset instead of the userland pwn mindset and serves as a great introduction to possible kernel structs and how the kernel heap works.</p>
+<p>Anyways, that&rsquo;s it for this text based youtube video. Please make sure to like 👍 and soobscribe and make sure to turn on the notification bell🔔 and see you guys <a href="https://youtu.be/oC2zvQ6B1Dw?si=Roa2V2vUd-jVzFRb">next time</a>.</p>
 
     <h4><a href="http://localhost:1313/">Back to Home</a></h4>
 </div>

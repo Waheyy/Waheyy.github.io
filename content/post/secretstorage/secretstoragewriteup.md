@@ -43,4 +43,64 @@ Well the path is stored in a kernel symbol `modprobe_path` and is also in a writ
 
 Now, I did the challenge with source code but during the actual event source code was not given so I shall also practice my ghidra skills here.
 
+#### Setup stuff:
+
+pic of req and box box size blah blah 
+
+#### DO_CREATE:
+
+Allocates a box into the GFG_KERNEL account. The size of box is 0x60 so it goes into the kmalloc-96 cache. You also can add a note in.
+
+#### DO_READ:
+
+Reads the name and note from the box into the buffer provided by the req struct.
+
+#### DO_WRITE:
+
+Writes a name and note to the box.
+
+#### DO_RESIZE:
+
+Resizes the note and copies the new note into it.
+
+#### DO_DELETE:
+
+Deletes a box and holy crap finally a vulnerability. The function frees the note and nulls it but when it frees the box it does not null it, leaving a dangling pointer that we can fandangle via a use-after-free(UAF).
+
+#### Exploit:
+
+Since KASLR is active, we are going to need a kernel leak to calculate the address of `modprobe path`. How in the frick frack snick snack do we do that here?
+
+Well, in my experience so far, kernel heap challenges often get leaks by overlapping kernel structs instead of something like the unsorted bin libc leak in userland. Since I can read the boxes name and note, I wanna get something that fits into the kmalloc-96 cache and also gets me a kernel leak so scrolling through [this site](https://bsauce.github.io/2021/09/26/kernel-exploit-%E6%9C%89%E7%94%A8%E7%9A%84%E7%BB%93%E6%9E%84%E4%BD%93/) we find a struct called `subprocess_info` that fits into kmalloc-96 and `work.func` can be leaked to get the kernel base yipee.
+
+So we allocate 2 boxes, box0 and box1. We free box0 then immediately reclaim its spot with a `subprocess_info` by calling `socket(22, AF_INET, 0)`.
+
+Since box0 is deleted but not nulled we can still read it and ta da, we get the information that `subprocess_info` is holding.
+
+This is the struct and we can see that it has a work_struct member then we dig deeper and we see that the work.func leak we need is at index 3 of the leaks.
+
+If we start the qemu with root we can also check that the leak is pointing to `call_usermodehelper_exec_work`.
+
+Since the address `call_usermodehelper_exec_work` and `modprobe_path` are all relative we can just do some math to find `modprobe_path`.
+comment the eqn i did 
+
+Now that we have the `modprobe_path` address we need to resize the note to go into 0x60 cache and overwrite over box0 again and make sure that the new note size is big enough and the note address is the address of `modprobe_path`.
+
+Then we write to box0 with the new note being the path of the script that I want ran with root privileges.
+
+The script basically copies the stuff in `/dev/sda` into `/tmp/flag` as well as granting it full permissions and makes it executable. Then it makes an unknown file and runs it which should then trigger `modprobe_path` and run the script and now the flag from `/dev/sda` is inside `/tmp/flag` and we can view it
+
+WAHEY! It worked, that's fantabbitastic.
+
+Overall, this challenge was very fun and got me thinking in the kernel pwn mindset instead of the userland pwn mindset and serves as a great introduction to possible kernel structs and how the kernel heap works.
+
+Anyways, that's it for this text based youtube video. Please make sure to like 👍 and soobscribe and make sure to turn on the notification bell🔔 and see you guys [next time](https://youtu.be/oC2zvQ6B1Dw?si=Roa2V2vUd-jVzFRb).
+
+
+
+
+
+
+
+
 
