@@ -93,7 +93,7 @@ case DO_CREATE: {
 }
 
 ```
-Allocates a box into the GFP_KERNEL account. The size of box is 0x60 so it goes into the kmalloc-96 cache. You also can add a note by passing in note address and size along with the req struct.
+Allocates a box with the GFP_KERNEL flag. The size of box is 0x60 so it goes into the kmalloc-96 cache. You also can add a note by passing in note address and size along with the req struct.
 
 #### DO_READ:
 
