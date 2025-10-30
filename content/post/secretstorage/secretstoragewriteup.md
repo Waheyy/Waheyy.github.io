@@ -31,7 +31,7 @@ As usual, protections help narrow down the options so we have:
 
 1. **CONFIG_SLAB_FREELIST_RANDOM** makes it so that freed objects go into the freelist in a random order instead of LIFO like normal. Its not set here so it means that there will be no need to do any heap fengshui.
 1. **CONFIG_STATIC_USERMODEHELPER** is not set so a modprobe path overwrite is possible (foreshadowing).
-1. **CONFIG_SYSVIPC** is not set so there are msg_msg structs.
+1. **CONFIG_SYSVIPC** is set so there are msg_msg structs.
 
 #### Modprobe path overwrite:
 

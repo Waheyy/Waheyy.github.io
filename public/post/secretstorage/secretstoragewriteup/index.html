@@ -80,7 +80,7 @@
 <ol>
 <li><strong>CONFIG_SLAB_FREELIST_RANDOM</strong> makes it so that freed objects go into the freelist in a random order instead of LIFO like normal. Its not set here so it means that there will be no need to do any heap fengshui.</li>
 <li><strong>CONFIG_STATIC_USERMODEHELPER</strong> is not set so a modprobe path overwrite is possible (foreshadowing).</li>
-<li><strong>CONFIG_SYSVIPC</strong> is not set so there are msg_msg structs.</li>
+<li><strong>CONFIG_SYSVIPC</strong> is set so there are msg_msg structs.</li>
 </ol>
 <h4 id="modprobe-path-overwrite">Modprobe path overwrite:</h4>
 <p><code>modprobe</code> is a program used to load and unload kernel modules. The path to it is a kernel global variable, which by default is <code>/sbin/modprobe</code>. Very cool but how is it helpful?</p>
