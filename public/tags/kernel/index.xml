@@ -2,17 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Kernel on Waheyyyyyyy</title>
-    <link>https://waheyy.github.io/tags/kernel/</link>
+    <link>http://localhost:1313/tags/kernel/</link>
     <description>Recent content in Kernel on Waheyyyyyyy</description>
     <generator>Hugo</generator>
     <language>en</language>
     <lastBuildDate>Sun, 26 Oct 2025 21:39:54 +0800</lastBuildDate>
-    <atom:link href="https://waheyy.github.io/tags/kernel/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:1313/tags/kernel/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>AYCEP2025 verysecretstorage Modprobe Path overwrite</title>
-      <link>https://waheyy.github.io/post/secretstorage/secretstoragewriteup/</link>
+      <link>http://localhost:1313/post/secretstorage/secretstoragewriteup/</link>
       <pubDate>Sun, 26 Oct 2025 21:39:54 +0800</pubDate>
-      <guid>https://waheyy.github.io/post/secretstorage/secretstoragewriteup/</guid>
+      <guid>http://localhost:1313/post/secretstorage/secretstoragewriteup/</guid>
       <description>&lt;h4 id=&#34;introduction&#34;&gt;Introduction:&lt;/h4&gt;&#xA;&lt;p&gt;WHATS&amp;rsquo;S UP GUYS! Welcome back to another text based youtube video. Today we will be reading a writeup about &lt;a href=&#34;https://github.com/KaligulaArmblessed/CTF-Challenges/tree/main/AYCEP_2024/verysecretstorage&#34;&gt;verysecretstorage&lt;/a&gt;, a challenge made by &lt;a href=&#34;https://kaligulaarmblessed.github.io/&#34;&gt;Kaligula&lt;/a&gt; for AYCEP2024 (yes I am a year late and missed out greatly). This was my first kernel heap challenge as well as my first real kernel challenge and it was pretty fun.&lt;/p&gt;&#xA;&lt;h4 id=&#34;table-of-contents&#34;&gt;Table of Contents:&lt;/h4&gt;&#xA;&lt;ol&gt;&#xA;&lt;li&gt;Protections&lt;/li&gt;&#xA;&lt;li&gt;Binary analysis&lt;/li&gt;&#xA;&lt;li&gt;Exploit&lt;/li&gt;&#xA;&lt;/ol&gt;&#xA;&lt;h4 id=&#34;protections&#34;&gt;Protections:&lt;/h4&gt;&#xA;&lt;p&gt;Since this is my first kpwn challenge I will be going through the common protections as well as the ones that people do not talk about often in beginner writeups (in my exp pls no sue me).&lt;/p&gt;</description>
     </item>
   </channel>

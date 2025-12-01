@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en"><head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+    <title>Waheyyyyyyy</title>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <meta content="utf-8" http-equiv="encoding">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="theme-color" content="#000084" />
+    <link rel="icon" href="http://localhost:1313//favicon.ico">
+    <link rel="canonical" href="http://localhost:1313/">
+    
+    
+</head>
+<body>
+<nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+        <div class="container">
+            <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse"></button>
+            <a class="brand" href="http://localhost:1313/">Waheyyyyyyy</a>
+            <div class="nav-collapse collapse">
+                <ul class="nav">
+                    
+                    
+                        
+                            <li>
+                                <a href="/about/">
+                                    
+                                    <span>About</span>
+                                </a>
+                            </li>
+                        
+                    
+                        
+                            <li>
+                                <a href="/post/">
+                                    
+                                    <span>Posts</span>
+                                </a>
+                            </li>
+                        
+                    
+                        
+                            <li>
+                                <a href="/categories/writeup/">
+                                    
+                                    <span>Writeups</span>
+                                </a>
+                            </li>
+                        
+                    
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav><div id="content" class="container">
+
+<div class="row-fluid navmargin">
+    <div class="page-header">
+        <h1>Umdctf2025 One-Write, a beautiful heap challenge - Mon, Dec 1, 2025</h1>
+    </div>
+    <p class="lead"></p>
+    <h4 id="introduction">Introduction:</h4>
+<p>WASSUP HOMIES, Mah name Tony! Welcome back to another text-based youtube video. One-Write is a challenge given to me by one of my dear senseis <a href="https://ndgsghdj.github.io/article/1.html">ndgsghdj</a> who helped guide me along this entire challenge. This is the hardest heap challenge I&rsquo;ve ever done and I want to go through the things I learnt in detail.</p>
+<h4 id="table-of-contents">Table of Contents:</h4>
+<ol>
+<li>Protections</li>
+<li>Binary Analysis</li>
+<li>Exploit</li>
+</ol>
+<h4 id="protections">Protections:</h4>
+<p>Protections always help narrow down the options, so running checksec we see,</p>
+<ol>
+<li><strong>Partial Relro</strong> - This means the GOT is writable and if I can gain an arbitrary write, this would be my main target for an code execution.</li>
+</ol>
+<p>This is basically the only protection that matters in this case.</p>
+<h4 id="binary-analysis">Binary Analysis:</h4>
+<p>Firstly we have some preamble,</p>
+<p>show pic til prompt()</p>
+<p>Now we have <code>alloc_chunk()</code>, it looks pretty normal, it lets you choose the index and size of the chunk but you do not get a write (Very sussy).</p>
+<p>show pic of alloc_chunk</p>
+<p>Then <code>free_chunk()</code> just frees a chunk at an index of your choosing. Note - It does not null the pointer, so we have a dangling pointer with potential for a Use-After-Free.</p>
+<p>show pic of free_chunk</p>
+<p>Here at <code>write_chunk()</code>, we see something interesting&hellip; We only have a 0x600-8 write to <code>the_chunk</code>.</p>
+<p>Finally, at <code>read_chunk()</code> we also see that we only have a 0x600-8 read to <code>the_chunk</code>.</p>
+<p>show pic of read_chunk</p>
+<p>Finally finally, in <code>main()</code> we see that a 0x600-8 chunk is allocated and freed, its also not nulled. This means that we only have a 0x600 byte control over the heap starting from <code>the_chunk</code>, so everything we wanna do better end up in that 0x600 bytes.</p>
+<p>Note - chunk_size-8 is an easy way to make sure that the allocated chunk falls in the right size bin.</p>
+<h4 id="exploit">Exploit:</h4>
+<p>In normal heap challenges, we get an arbitrary write via an arbitrary allocation once we perform tcache poisoning or any other attack that gives rise to an arbitrary allocation. Since the binary only has <strong>Partial Relro</strong> the plan is to do something is same same but a bit different. We still need leaks though, so lets tackle that.</p>
+<h4 id="heap-leak">Heap Leak:</h4>
+<h4 id="libc-leak">Libc Leak:</h4>
+<p>After we get these 2 leaks, normally we could just get an arbitrary allocation to the Global Offset Table (GOT) and overwrite a GOT entry to <code>system()</code> but the problem we face here is that we lack the control over the arbitrary allocation. Here is a shameless plug for that kinda <a href="https://waheyy.github.io/post/liardancer/liardancerwriteup/">challenge.</a></p>
+<p>Thinking for more time (I mean giving up and getting a hint from sensei), we realise that once we have a reference to <code>the_chunk</code> we are able to broaden our options more. Since <code>the_chunk</code> is a global variable, we can make use of the <a href="https://github.com/shellphish/how2heap/blob/master/glibc_2.35/unsafe_unlink.c">unsafe_unlink</a> attack to overwrite the value of <code>the_chunk</code>.</p>
+<p>So we need the runtime address of <code>the_chunk</code>, which requires a PIE leak&hellip; but how the hell do we get one from this binary???</p>
+<h4 id="pie-leak">PIE Leak:</h4>
+<p>Seeing my struggle at getting the PIE Leak, my sensei bestowed some sacred knowledge onto me. This <a href="https://nickgregory.me/post/2019/04/06/pivoting-around-memory/">article</a> talks about how to get leaks from other leaks and reading through it, you can see that you can leak PIE via the ld.</p>
+
+    <h4><a href="http://localhost:1313/">Back to Home</a></h4>
+</div>
+
+
+        </div><footer class="container">
+    <hr class="soften">
+    <p>
+&copy; 
+
+    Waheyy
+
+<span id="thisyear">2025</span>
+
+
+        | Built on <a href="//gohugo.io" target="_blank">Hugo</a>
+
+</p>
+    <p class="text-center">
+        
+        
+        
+        <a href="https://github.com/Waheyy">GitHub</a> 
+        
+    </p>
+</footer>
+
+</body><link rel="stylesheet" href="/css/bootstrap.css">
+<link rel="stylesheet" href="/css/bootstrap-responsive.css">
+<link rel="stylesheet" href="/css/style.css">
+
+<script src="/js/jquery.js"></script>
+<script src="/js/bootstrap-386.js"></script>
+<script src="/js/bootstrap-transition.js"></script>
+<script src="/js/bootstrap-alert.js"></script>
+<script src="/js/bootstrap-modal.js"></script>
+<script src="/js/bootstrap-dropdown.js"></script>
+<script src="/js/bootstrap-scrollspy.js"></script>
+<script src="/js/bootstrap-tab.js"></script>
+<script src="/js/bootstrap-tooltip.js"></script>
+<script src="/js/bootstrap-popover.js"></script>
+<script src="/js/bootstrap-button.js"></script>
+<script src="/js/bootstrap-collapse.js"></script>
+<script src="/js/bootstrap-carousel.js"></script>
+<script src="/js/bootstrap-typeahead.js"></script>
+<script src="/js/bootstrap-affix.js"></script>
+<script>
+    _386 = { 
+        fastLoad: false ,
+        onePass: false , 
+        speedFactor: 1 
+    };
+
+    
+    function ThisYear() {
+        document.getElementById('thisyear').innerHTML = new Date().getFullYear();
+    };
+</script>
+</html>
