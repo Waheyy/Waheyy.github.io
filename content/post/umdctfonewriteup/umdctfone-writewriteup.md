@@ -106,7 +106,7 @@ So first we need to get `_rtld_global` which is a constant offset from libc base
 
 show pic
 
-Since we corrupt A.fd to be the pointer of the PIE base (B), the first 8 bytes of that pointer is also going to be PIE base since we have 3 in tcache. So we pull A and B out of tcache leaving PIE base inside then we free A again so that A.fd = PIE base and read A's fd. Absolutely genius brings a tear to my eyes I love pwn.
+Since we corrupt A.fd to be the pointer of the PIE base (B), the fd of B will be the PIE base since the first 8 bytes at the pointer is PIE base since we have 3 in tcache. So we pull A and B out of tcache leaving PIE base inside then we free A again so that A.fd = PIE base and read A's fd. Absolutely genius brings a tear to my eyes I love pwn.
 
 In the end, reading the fd of A once we freed it again, PIE base will be leak ^ (B >> 12) ^ (A >> 12).
 Finally, we have a PIE leak god damn. Using it we get the address of `the_chunk`.
@@ -141,6 +141,19 @@ The general flow of the attack is (Go read [how2heap](https://github.com/shellph
 1. Create a fake chunk in chunk 0(first chunk allocated).
 1. Overwrite the metadata of chunk 1 (second chunk allocated), change the `prev_size` and `prev_inuse` bit
 1. free chunk 1 so it consolidates the fake chunk inside chunk 0 and **unlinks** it.
+
+#### Exploit continued...
+
+We need to overwrite the global variable `the_chunk` to be a GOT entry so we can edit it. Since I did the unsafe_unlink with small bin sized chunks, we need to fill up tcache first so our chunks go into unsorted.
+
+Once our chunks are in place, we can use the write functionality to make our fake chunk.
+
+Free our victim chunk.
+
+Now we have control over the GOT entry, I chose `atoi()` since there it takes one argument from user input. Overwrite `atoi()` to `system()` then BAM!! we have a shell.
+
+
+This challenge was fun, made use of a lot of things I knew about but could not apply properly and also taught me how to use the unsafe unlink attack. 10/10 would recommend.
 
 
 
