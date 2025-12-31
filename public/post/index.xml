@@ -6,8 +6,15 @@
     <description>Recent content in Posts on Waheyyyyyyy</description>
     <generator>Hugo</generator>
     <language>en</language>
-    <lastBuildDate>Mon, 01 Dec 2025 12:54:09 +0800</lastBuildDate>
+    <lastBuildDate>Wed, 31 Dec 2025 17:36:25 +0800</lastBuildDate>
     <atom:link href="http://localhost:1313/post/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>NYP Dec CTF 2025 Labubu 6-8 different ways</title>
+      <link>http://localhost:1313/post/labubu/labubu/</link>
+      <pubDate>Wed, 31 Dec 2025 17:36:25 +0800</pubDate>
+      <guid>http://localhost:1313/post/labubu/labubu/</guid>
+      <description>&lt;h4 id=&#34;introduction&#34;&gt;Introduction:&lt;/h4&gt;&#xA;&lt;p&gt;labubu labubu labubububububu labubu labewbew labbubu labubu labu labubu labububub&lt;/p&gt;&#xA;&lt;p&gt;Labubu translation: I wrote a beginner challenge for NYP Dec CTF 2025. It is meant to be a simple introduction to &lt;strong&gt;tcache poisoning&lt;/strong&gt; with a small twist to force solvers to be more creative.&lt;/p&gt;&#xA;&lt;h4 id=&#34;table-of-contents&#34;&gt;Table of Contents:&lt;/h4&gt;&#xA;&lt;ol&gt;&#xA;&lt;li&gt;Prerequisites.&lt;/li&gt;&#xA;&lt;li&gt;Binary and source code review.&lt;/li&gt;&#xA;&lt;li&gt;Exploit(s)&lt;/li&gt;&#xA;&lt;/ol&gt;&#xA;&lt;h4 id=&#34;prerequisites&#34;&gt;Prerequisites:&lt;/h4&gt;&#xA;&lt;p&gt;Go read this post on the basics of &lt;a href=&#34;https://waheyy.github.io/post/liardancer/liardancerwriteup/&#34;&gt;tcache poisoning.&lt;/a&gt;&#xA;The only difference here is since the binary has the &lt;strong&gt;FULL RELRO&lt;/strong&gt; protection enabled, the binary&amp;rsquo;s &lt;strong&gt;Global Offset Table&lt;/strong&gt; (GOT) cannot be written to so we have to get creative with our write-what-where.&lt;/p&gt;</description>
+    </item>
     <item>
       <title>Umdctf2025 One-Write, a beautiful heap challenge</title>
       <link>http://localhost:1313/post/umdctfonewriteup/umdctfone-writewriteup/</link>

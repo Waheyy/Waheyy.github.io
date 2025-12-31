@@ -86,11 +86,26 @@
 <p>Finally finally, in <code>main()</code> we see that a 0x600-8 chunk is allocated and freed, its also not nulled. This means that we only have a 0x600 byte control over the heap starting from <code>the_chunk</code>, so everything we wanna do better end up in that 0x600 bytes.</p>
 <p>Note - chunk_size-8 is an easy way to make sure that the allocated chunk falls in the right size bin.</p>
 <h4 id="exploit">Exploit:</h4>
-<p>In normal heap challenges, we get an arbitrary write via an arbitrary allocation once we perform tcache poisoning or any other attack that gives rise to an arbitrary allocation. Since the binary only has <strong>Partial Relro</strong> the plan is to do something is same same but a bit different. We still need leaks though, so lets tackle that.</p>
+<p>In normal heap challenges, we get an arbitrary write via an arbitrary allocation once we perform tcache poisoning or any other attack that gives rise to an arbitrary allocation. Since the binary only has <strong>Partial Relro</strong> the plan is to do something that is same same but different. We still need leaks though, so lets tackle that.</p>
 <h4 id="heap-leak">Heap Leak:</h4>
-<p>The heap leak is your standard leak to get the heap key</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"></code></pre></div><h4 id="libc-leak">Libc Leak:</h4>
-<p>The libc leak is your standard unsorted bin leak, where you leak the <code>main_arena+96</code> address</p>
+<p>The heap leak is your standard leak to get the heap key for pointer mangling.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#75715e">#mangle function takes in the heap key you leak and your target address and mangles it.</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">mangle</span>(key, fd):
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> (key) <span style="color:#f92672">^</span> fd
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#here is the code i used for leaking the heap key.</span>
+</span></span><span style="display:flex;"><span>alloc(<span style="color:#ae81ff">2</span>,<span style="color:#ae81ff">16</span>)
+</span></span><span style="display:flex;"><span>free(<span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>free(<span style="color:#ae81ff">2</span>)
+</span></span><span style="display:flex;"><span>read()
+</span></span><span style="display:flex;"><span>p<span style="color:#f92672">.</span>recvuntil(<span style="color:#e6db74">b</span><span style="color:#e6db74">&#34;&gt; &#34;</span>)
+</span></span><span style="display:flex;"><span>heapleak <span style="color:#f92672">=</span> p<span style="color:#f92672">.</span>recvuntil(<span style="color:#e6db74">b</span><span style="color:#e6db74">&#34;&gt; &#34;</span>)[<span style="color:#ae81ff">0x430</span>:<span style="color:#ae81ff">0x430</span><span style="color:#f92672">+</span><span style="color:#ae81ff">8</span>]
+</span></span><span style="display:flex;"><span>heapleak <span style="color:#f92672">=</span> u64(heapleak<span style="color:#f92672">.</span>ljust(<span style="color:#ae81ff">8</span>, <span style="color:#e6db74">b</span><span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\x00</span><span style="color:#e6db74">&#34;</span>))
+</span></span><span style="display:flex;"><span>print(<span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;this is heapleak: </span><span style="color:#e6db74">{</span>hex(heapleak)<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>)
+</span></span><span style="display:flex;"><span>alloc(<span style="color:#ae81ff">3</span>, <span style="color:#ae81ff">16</span>)
+</span></span></code></pre></div><p>The idea is that you allocate one thing and free it so it goes into tcache and read it back. Since the first chunk that goes into tcache will have its fd be NULL, NULL ^ heap key still gives heap key which is why we can just read it like that.</p>
+<h4 id="libc-leak">Libc Leak:</h4>
+<p>The libc leak is your standard unsorted bin leak, where you leak the <code>main_arena+96</code> address.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>alloc(<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1056</span>)
 </span></span><span style="display:flex;"><span>alloc(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">16</span>)
 </span></span><span style="display:flex;"><span>free(<span style="color:#ae81ff">0</span>)
@@ -107,6 +122,38 @@
 <p>So we need the runtime address of <code>the_chunk</code>, which requires a PIE leak&hellip; but how the hell do we get one from this binary???</p>
 <h4 id="pie-leak">PIE Leak:</h4>
 <p>Seeing my struggle at getting the PIE Leak, my sensei bestowed some sacred knowledge onto me. This <a href="https://nickgregory.me/post/2019/04/06/pivoting-around-memory/">article</a> talks about how to get leaks from other leaks and reading through it, you can see that you can leak PIE via the ld.</p>
+<p>So first we need to get <code>_rtld_global</code> which is a constant offset from libc base and the first field of that struct is a pointer that holds the PIE base. So we do our usual tcache poison and get an arbitrary allocation at the pointer that holds the PIE base then we try to read it and we go &ldquo;oh shit I don&rsquo;t have control over my arbitrary allocation so how the hell do I read.&rdquo; and so we now can talk about one of the beautiful parts of this challenge.</p>
+<p>show pic</p>
+<p>Since we corrupt A.fd to be the pointer of the PIE base (B), the fd of B will be the PIE base since the first 8 bytes at the pointer is PIE base since we have 3 in tcache. So we pull A and B out of tcache leaving PIE base inside then we free A again so that A.fd = PIE base and read A&rsquo;s fd. Absolutely genius brings a tear to my eyes I love pwn.</p>
+<p>In the end, reading the fd of A once we freed it again, PIE base will be leak ^ (B &raquo; 12) ^ (A &raquo; 12).
+Finally, we have a PIE leak god damn. Using it we get the address of <code>the_chunk</code>.</p>
+<h4 id="unsafe-unlink-attack">Unsafe Unlink attack:</h4>
+<p>We now interrupt your regularly scheduled program to go through the unsafe unlink attack, for all the homies who do not know what it is.</p>
+<p>The entire attack is based around unlinking a node from a doubly linked list, if you took data structures and algorithms you would know how to do it.</p>
+<p>show pic of normal unlinking</p>
+<p>Let P be the chunk you want to unlink.</p>
+<p>The normal unlinking operation goes like</p>
+<p><strong>P -&gt; fd -&gt; bk = P.bk</strong>
+<strong>P -&gt; bk -&gt; fd = P.fd</strong></p>
+<p>Basically setting the bk of the fd of P to the bk of P to unlink P from the linked list and vice versa.</p>
+<p>We also need to satisfy checks.</p>
+<p><strong>P -&gt; fd -&gt; bk = P</strong>
+<strong>P -&gt; bk -&gt; fd = P</strong></p>
+<p>This is to make sure that arbitrary pointers dun get unlinked which is what happened in the old version of unsafe unlink before the check was added.</p>
+<p>The general flow of the attack is (Go read <a href="https://github.com/shellphish/how2heap/blob/master/glibc_2.35/unsafe_unlink.c">how2heap</a> for details):</p>
+<ol>
+<li>Allocate 2 chunks goes into unsorted bin. (e.g. 0x420)</li>
+<li>Allocate a guard chunk to prevent consolidation.</li>
+<li>Create a fake chunk in chunk 0(first chunk allocated).</li>
+<li>Overwrite the metadata of chunk 1 (second chunk allocated), change the <code>prev_size</code> and <code>prev_inuse</code> bit</li>
+<li>free chunk 1 so it consolidates the fake chunk inside chunk 0 and <strong>unlinks</strong> it.</li>
+</ol>
+<h4 id="exploit-continued">Exploit continued&hellip;</h4>
+<p>We need to overwrite the global variable <code>the_chunk</code> to be a GOT entry so we can edit it. Since I did the unsafe_unlink with small bin sized chunks, we need to fill up tcache first so our chunks go into unsorted.</p>
+<p>Once our chunks are in place, we can use the write functionality to make our fake chunk.</p>
+<p>Free our victim chunk.</p>
+<p>Now we have control over the GOT entry, I chose <code>atoi()</code> since there it takes one argument from user input. Overwrite <code>atoi()</code> to <code>system()</code> then BAM!! we have a shell.</p>
+<p>This challenge was fun, made use of a lot of things I knew about but could not apply properly and also taught me how to use the unsafe unlink attack. 10/10 would recommend.</p>
 
     <h4><a href="http://localhost:1313/">Back to Home</a></h4>
 </div>
