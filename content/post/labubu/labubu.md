@@ -136,7 +136,7 @@ Usually to get a Libc leak in heap challenges, we have to make use of a techniqu
 
 So to get a libc leak, we allocate a chunk that goes into the unsorted bin and free it. Once freed we can read it back and take the values which will point into `main_arena+96` inside Libc.
 
-![gdb_main_arena_offsets](/post/labubu/images/gdb_main_arena_offsets.png)
+![gdb_main_arena_offsets](/post/labubu/images/gdb_main_arena_offsets.jpeg)
 
 But if you try to do the same thing here, you will find a problem. Your chunks go straight into tcache and you cannot control the size, what do you do?????
 
@@ -159,7 +159,7 @@ base = libcleak - main_arena_offset
 print(f"This is libc base: {hex(base)}")
 ```
 
-![main_arena_leak](/post/labubu/images/main_arena_leak.png)
+![main_arena_leak](/post/labubu/images/main_arena_leak.jpeg)
 
 #### 3. Tcache poison and Method 1:
 
@@ -180,7 +180,7 @@ alloc(3) #this is my stderr struct back
 
 Now we can edit `stderr` to be anything and we just pass in a stderr FSOP payload, exit and yay, we pop shell.
 
-![fsopwin](/post/labubu/images/fsop_win.png)
+![fsopwin](/post/labubu/images/fsop_win.jpeg)
 
 Here is my fsop payload.
 
@@ -206,7 +206,7 @@ When the program exits via `exit()` libc will execute `__run_exit_handlers()` wh
 
 So in order to overwrite the **dtor_list** we must first leak the address of **tls** and then erase or leak the `PTR_MANGLE cookie`. It is also at this time we realise using the arballoc to leak addresses is getting annoying as we have to tcache poison each time we want to leak something, so we upgrade to a true arbitrary read using `stdout`. 
 
-![stdout_offset](/post/labubu/images/stdout_offset.png)
+![stdout_offset](/post/labubu/images/stdout_offset.jpeg)
 
 ```python 
 def readmem(addr, size):
@@ -239,13 +239,13 @@ Now we have address of _rtld_global we can use the `initial_dtv` field inside `_
 
 Typing `p _rtld_global` in gdb (I use [bata24 gef](https://github.com/bata24/gef)) shows you the struct.
 
-![initial_dtv](/post/labubu/images/initial_dtv.png)
+![initial_dtv](/post/labubu/images/initial_dtv.jpeg)
 
 Something interesting of note is that the `dtor_list` is close to the `tls` so we can in one shot erase the `PTR_MANGLE cookie` and the `dtor_list`.
 
 Here you can see the `tls` before the overwrite.
 
-![before_tls_overwrite](/post/labubu/images/before_tls_overwrite.png)
+![before_tls_overwrite](/post/labubu/images/before_tls_overwrite.jpeg)
 
 ```python
 target = tls_leak - 0x50
@@ -274,11 +274,11 @@ edit(1, fake)
 p.sendline(b"5")
 ```
 
-![after_tls_overwrite](/post/labubu/images/afater_tls_overwrite.png)
+![after_tls_overwrite](/post/labubu/images/afater_tls_overwrite.jpeg)
 
 Here you can see that the `PTR_MANGLE cookie` is completely 0 now due to our overwrite. We also have our `dtor_list -> func` pointing to our `system()` and once called `system()` will take the thing below as its argument which is ever so conveniently `/bin/sh`. YIPEE!
 
-![dtor_win](/post/labubu/images/dtor_win.png)
+![dtor_win](/post/labubu/images/dtor_win.jpeg)
 
 Easy win. This method is overkill for this challenge as it requires you to have at least one more tcache poison and leak a lot of more addresses when just simple FSOP would have worked.
 
@@ -300,11 +300,11 @@ alloc(1)
 edit(1, p64(0))
 ```
 
-![cookie_null](/post/labubu/images/cookie_null.png)
+![cookie_null](/post/labubu/images/cookie_null.jpeg)
 
 Now we can inspect our `initial` struct which tells us that this program will exit with flavour **0x4** which is `ef_cxa` so we just have to overwrite the `cxa` entry in `initial` to `system()` and its arguments to `/bin/sh` and we win.
 
-![before_initial_overwrite](/post/labubu/images/before_initial_overwrite.png)
+![before_initial_overwrite](/post/labubu/images/before_initial_overwrite.jpeg)
 
 ```python
 libc = ELF("./libc.so.6")
@@ -334,9 +334,11 @@ p.sendline(b"5")
 
 Here you can see that the function is overwritten to system.
 
-![after_initial_overwrite](/post/labubu/images/after_initial_overwrite.png)
+![after_initial_overwrite](/post/labubu/images/after_initial_overwrite.jpeg)
 
 We have to perform a third tcache poison to then overwrite the `initial` struct and then exit to trigger the exit handlers.
+
+![exit_handlers_win](/post/labubu/images/exit_handlers_win.jpeg)
 
 This method is even more inefficient as I have to tcache poison 3 times in total as well as get a **ton** more leaks. SO FOR THE SWEET LOVE OF GOD JUST USE FSOP. Thank you.
 
