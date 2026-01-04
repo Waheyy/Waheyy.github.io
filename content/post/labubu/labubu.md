@@ -1,6 +1,6 @@
 +++
 date = '2025-12-31T17:36:25+08:00'
-draft = true
+draft = false
 title = 'NYP Dec CTF 2025 Labubu 3 different ways'
 categories = ["writeup", "CTF"]
 tags = ["heap", "pwn"]
@@ -239,7 +239,7 @@ print(f"this is tls leak {hex(tls_leak)}")
 
 Now we have address of _rtld_global we can use the `initial_dtv` field inside `_rtld_global` as it holds a pointer into `tls` which has a constant offset to `tls` base so now equipped with the `tls` base address we can begin the overwriting.
 
-Typing `p _rtld_global` in gdb (I use [bata24 gef](https://github.com/bata24/gef)) shows you the struct.
+Typing `p _rtld_global` in gdb (I use [bata24 gef](https://github.com/bata24/gef)) shows you the struct. It is a very large struct so I only showed the part that matters here.
 
 ![initial_dtv](/post/labubu/images/initial_dtv.jpeg)
 
@@ -348,3 +348,5 @@ This method is even more inefficient as I have to tcache poison 3 times in total
 Stop using jippity to hallucinate answers for pwn!!!
 
 [Here are the full scripts and files for this challenge.](https://github.com/Waheyy/challenges/tree/main/labubu)
+Since I did not go into full details for the methods, you can visit [this.](https://github.com/nobodyisnobody/docs/tree/main/code.execution.on.last.libc/) for full details on each method I used here.
+

@@ -2,45 +2,40 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>http://localhost:1313/categories/</loc>
+    <loc>https://waheyy.github.io/categories/</loc>
     <lastmod>2025-12-31T17:36:25+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/categories/ctf/</loc>
+    <loc>https://waheyy.github.io/categories/ctf/</loc>
     <lastmod>2025-12-31T17:36:25+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/heap/</loc>
+    <loc>https://waheyy.github.io/tags/heap/</loc>
     <lastmod>2025-12-31T17:36:25+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/post/labubu/labubu/</loc>
+    <loc>https://waheyy.github.io/post/labubu/labubu/</loc>
     <lastmod>2025-12-31T17:36:25+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/post/</loc>
+    <loc>https://waheyy.github.io/post/</loc>
     <lastmod>2025-12-31T17:36:25+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/pwn/</loc>
+    <loc>https://waheyy.github.io/tags/pwn/</loc>
     <lastmod>2025-12-31T17:36:25+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/</loc>
+    <loc>https://waheyy.github.io/tags/</loc>
     <lastmod>2025-12-31T17:36:25+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/</loc>
+    <loc>https://waheyy.github.io/</loc>
     <lastmod>2025-12-31T17:36:25+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/categories/writeup/</loc>
+    <loc>https://waheyy.github.io/categories/writeup/</loc>
     <lastmod>2025-12-31T17:36:25+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/post/umdctfonewriteup/umdctfone-writewriteup/</loc>
-    <lastmod>2025-12-01T12:54:09+08:00</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/post/secretstorage/secretstoragewriteup/</loc>
+    <loc>https://waheyy.github.io/post/secretstorage/secretstoragewriteup/</loc>
     <lastmod>2025-10-26T21:39:54+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/kernel/</loc>
+    <loc>https://waheyy.github.io/tags/kernel/</loc>
     <lastmod>2025-10-26T21:39:54+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/post/liardancer/liardancerwriteup/</loc>
+    <loc>https://waheyy.github.io/post/liardancer/liardancerwriteup/</loc>
     <lastmod>2025-07-17T22:36:21+08:00</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/about/</loc>
   </url>
 </urlset>

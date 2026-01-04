@@ -2,31 +2,24 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Heap on Waheyyyyyyy</title>
-    <link>http://localhost:1313/tags/heap/</link>
+    <link>https://waheyy.github.io/tags/heap/</link>
     <description>Recent content in Heap on Waheyyyyyyy</description>
     <generator>Hugo</generator>
     <language>en</language>
     <lastBuildDate>Wed, 31 Dec 2025 17:36:25 +0800</lastBuildDate>
-    <atom:link href="http://localhost:1313/tags/heap/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://waheyy.github.io/tags/heap/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>NYP Dec CTF 2025 Labubu 3 different ways</title>
-      <link>http://localhost:1313/post/labubu/labubu/</link>
+      <link>https://waheyy.github.io/post/labubu/labubu/</link>
       <pubDate>Wed, 31 Dec 2025 17:36:25 +0800</pubDate>
-      <guid>http://localhost:1313/post/labubu/labubu/</guid>
+      <guid>https://waheyy.github.io/post/labubu/labubu/</guid>
       <description>&lt;h4 id=&#34;introduction&#34;&gt;Introduction:&lt;/h4&gt;&#xA;&lt;p&gt;labubu labubu labubububububu labubu labewbew labbubu labubu labu labubu labububub&lt;/p&gt;&#xA;&lt;p&gt;Labubu translation: I wrote a beginner challenge for NYP Dec CTF 2025. It is meant to be a simple introduction to &lt;strong&gt;tcache poisoning&lt;/strong&gt; with a small twist to force solvers to be more creative.&lt;/p&gt;&#xA;&lt;h4 id=&#34;table-of-contents&#34;&gt;Table of Contents:&lt;/h4&gt;&#xA;&lt;ol&gt;&#xA;&lt;li&gt;Prerequisites.&lt;/li&gt;&#xA;&lt;li&gt;Binary and source code review.&lt;/li&gt;&#xA;&lt;li&gt;Exploit(s)&lt;/li&gt;&#xA;&lt;/ol&gt;&#xA;&lt;h4 id=&#34;prerequisites&#34;&gt;Prerequisites:&lt;/h4&gt;&#xA;&lt;p&gt;Go read this post on the basics of &lt;a href=&#34;https://waheyy.github.io/post/liardancer/liardancerwriteup/&#34;&gt;tcache poisoning.&lt;/a&gt;&#xA;The only difference here is since the binary has the &lt;strong&gt;FULL RELRO&lt;/strong&gt; protection enabled, the binary&amp;rsquo;s &lt;strong&gt;Global Offset Table&lt;/strong&gt; (GOT) cannot be written to so we have to get creative with our write-what-where.&lt;/p&gt;</description>
     </item>
     <item>
-      <title>Umdctf2025 One-Write, a beautiful heap challenge</title>
-      <link>http://localhost:1313/post/umdctfonewriteup/umdctfone-writewriteup/</link>
-      <pubDate>Mon, 01 Dec 2025 12:54:09 +0800</pubDate>
-      <guid>http://localhost:1313/post/umdctfonewriteup/umdctfone-writewriteup/</guid>
-      <description>&lt;h4 id=&#34;introduction&#34;&gt;Introduction:&lt;/h4&gt;&#xA;&lt;p&gt;WASSUP HOMIES, Mah name Tony! Welcome back to another text-based youtube video. One-Write is a challenge given to me by one of my dear senseis &lt;a href=&#34;https://ndgsghdj.github.io/article/1.html&#34;&gt;ndgsghdj&lt;/a&gt; who helped guide me along this entire challenge. This is the hardest heap challenge I&amp;rsquo;ve ever done and I want to go through the things I learnt in detail.&lt;/p&gt;&#xA;&lt;h4 id=&#34;table-of-contents&#34;&gt;Table of Contents:&lt;/h4&gt;&#xA;&lt;ol&gt;&#xA;&lt;li&gt;Protections&lt;/li&gt;&#xA;&lt;li&gt;Binary Analysis&lt;/li&gt;&#xA;&lt;li&gt;Exploit&lt;/li&gt;&#xA;&lt;/ol&gt;&#xA;&lt;h4 id=&#34;protections&#34;&gt;Protections:&lt;/h4&gt;&#xA;&lt;p&gt;Protections always help narrow down the options, so running checksec we see,&lt;/p&gt;</description>
-    </item>
-    <item>
       <title>NYP Infosec June CTF 2025 Liardancer Writeup</title>
-      <link>http://localhost:1313/post/liardancer/liardancerwriteup/</link>
+      <link>https://waheyy.github.io/post/liardancer/liardancerwriteup/</link>
       <pubDate>Thu, 17 Jul 2025 22:36:21 +0800</pubDate>
-      <guid>http://localhost:1313/post/liardancer/liardancerwriteup/</guid>
+      <guid>https://waheyy.github.io/post/liardancer/liardancerwriteup/</guid>
       <description>&lt;h4 id=&#34;tldr&#34;&gt;TLDR;&lt;/h4&gt;&#xA;&lt;p&gt;Liardancer is a heap pwn challenge from the June NYP Infosec 2025 CTF written by &lt;a href=&#34;https://wrenches.online/nyp.html&#34;&gt;cf&lt;/a&gt; (check her writeup out).&#xA;It is a simple &lt;strong&gt;tcache poisoning&lt;/strong&gt; into a &lt;strong&gt;Global Offset Table(GOT)&lt;/strong&gt; overwrite, however with the security features of pointer mangling and the enforcement of 16 byte alignment for pointers returned by &lt;code&gt;malloc()&lt;/code&gt;.&lt;/p&gt;&#xA;&lt;h4 id=&#34;table-of-contents&#34;&gt;Table of contents:&lt;/h4&gt;&#xA;&lt;ol&gt;&#xA;&lt;li&gt;Prerequisites.&lt;/li&gt;&#xA;&lt;li&gt;Binary and Source code Review.&lt;/li&gt;&#xA;&lt;li&gt;Exploit.&lt;/li&gt;&#xA;&lt;/ol&gt;&#xA;&lt;h4 id=&#34;prerequisites&#34;&gt;Prerequisites&lt;/h4&gt;&#xA;&lt;p&gt;To do this exploit, we need to have a basic understanding of &lt;code&gt;malloc()&lt;/code&gt;, &lt;code&gt;free()&lt;/code&gt;, tcache , the GOT and the heap.&lt;/p&gt;</description>
     </item>
   </channel>
