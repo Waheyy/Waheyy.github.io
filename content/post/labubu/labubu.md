@@ -204,7 +204,7 @@ Since I gave a 0x400 sized arbitrary write, you have a lot of options on how you
 
 When the program exits via `exit()` libc will execute `__run_exit_handlers()` which will call destructor functions (dtors) to cleanup before exiting. These functions are also mangled with the `PTR_MANGLE cookie` inside the **Thread Local Storage** (tls). 
 
-So in order to overwrite the **dtor_list** we must first leak the address of **tls** and then erase or leak the `PTR_MANGLE cookie`. It is also at this time we realise using the arballoc to leak addresses is getting annoying as we have to tcache poison each time we want to leak something, so we upgrade to a true arbitrary read using `stdout`. 
+So in order to overwrite the **dtor_list** we must first leak the address of **tls** and then erase or leak the `PTR_MANGLE cookie`. It is also at this time we realise using the arb-alloc to leak addresses is getting annoying as we have to tcache poison each time we want to leak something, so we upgrade to a true arbitrary read using `stdout`. 
 
 ![stdout_offset](/post/labubu/images/stdout_offset.jpeg)
 
@@ -213,13 +213,15 @@ def readmem(addr, size):
     temp = p64(0xfbad1887) + p64(0)*3 + p64(addr) + p64(addr+size)*3 + p64(addr+size+1)
     return temp
 
-#since we have full control over the `stdout` struct we can overwrite it to give us a read using these flags and values
+#since we have full control over the `stdout` struct we can overwrite it to give us a read.
 
 ```
 
+Refer to [this](https://github.com/nobodyisnobody/docs/tree/main/using.stdout.as.a.read.primitive) for details on the `stdout` leak.
+
 Now we can just repeatedly overwrite `stdout` to let us read anywhere we want as many times as we want, no need to tcache poison again and again YIPEE.
 
-So first, we leak address of `__nptl_rtld_global` which holds address of `_rtld_global`. 
+So first, we leak address of `__nptl_rtld_global` which holds the address of `_rtld_global`. 
 
 ```python
 edit(3, readmem(rtld, 8))
@@ -274,7 +276,8 @@ edit(1, fake)
 p.sendline(b"5")
 ```
 
-![after_tls_overwrite](/post/labubu/images/afater_tls_overwrite.jpeg)
+![after_tls_overwrite](/post/labubu/images/after_tls_overwrite.jpeg)
+
 
 Here you can see that the `PTR_MANGLE cookie` is completely 0 now due to our overwrite. We also have our `dtor_list -> func` pointing to our `system()` and once called `system()` will take the thing below as its argument which is ever so conveniently `/bin/sh`. YIPEE!
 
@@ -342,6 +345,6 @@ We have to perform a third tcache poison to then overwrite the `initial` struct 
 
 This method is even more inefficient as I have to tcache poison 3 times in total as well as get a **ton** more leaks. SO FOR THE SWEET LOVE OF GOD JUST USE FSOP. Thank you.
 
-Stop using chatgpt to hallucinate answers for pwn!!!
+Stop using jippity to hallucinate answers for pwn!!!
 
-[Here are the full scripts and files for this challenge.]()
+[Here are the full scripts and files for this challenge.](https://github.com/Waheyy/challenges/tree/main/labubu)
