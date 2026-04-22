@@ -6,20 +6,20 @@
     <description>Recent content in Categories on Waheyyyyyyy</description>
     <generator>Hugo</generator>
     <language>en</language>
-    <lastBuildDate>Wed, 31 Dec 2025 17:36:25 +0800</lastBuildDate>
+    <lastBuildDate>Wed, 22 Apr 2026 17:13:34 +0800</lastBuildDate>
     <atom:link href="https://waheyy.github.io/categories/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Writeup</title>
+      <link>https://waheyy.github.io/categories/writeup/</link>
+      <pubDate>Wed, 22 Apr 2026 17:13:34 +0800</pubDate>
+      <guid>https://waheyy.github.io/categories/writeup/</guid>
+      <description></description>
+    </item>
     <item>
       <title>CTF</title>
       <link>https://waheyy.github.io/categories/ctf/</link>
       <pubDate>Wed, 31 Dec 2025 17:36:25 +0800</pubDate>
       <guid>https://waheyy.github.io/categories/ctf/</guid>
-      <description></description>
-    </item>
-    <item>
-      <title>Writeup</title>
-      <link>https://waheyy.github.io/categories/writeup/</link>
-      <pubDate>Wed, 31 Dec 2025 17:36:25 +0800</pubDate>
-      <guid>https://waheyy.github.io/categories/writeup/</guid>
       <description></description>
     </item>
   </channel>

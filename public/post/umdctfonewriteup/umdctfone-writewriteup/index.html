@@ -89,7 +89,7 @@
 <p>In normal heap challenges, we get an arbitrary write via an arbitrary allocation once we perform tcache poisoning or any other attack that gives rise to an arbitrary allocation. Since the binary only has <strong>Partial Relro</strong> the plan is to do something that is same same but different. We still need leaks though, so lets tackle that.</p>
 <h4 id="heap-leak">Heap Leak:</h4>
 <p>The heap leak is your standard leak to get the heap key for pointer mangling.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#75715e">#mangle function takes in the heap key you leak and your target address and mangles it.</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#75715e">#mangle function takes in the heap key you leak and your target address and mangles it.</span>
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">mangle</span>(key, fd):
 </span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> (key) <span style="color:#f92672">^</span> fd
 </span></span><span style="display:flex;"><span>
@@ -106,7 +106,7 @@
 </span></span></code></pre></div><p>The idea is that you allocate one thing and free it so it goes into tcache and read it back. Since the first chunk that goes into tcache will have its fd be NULL, NULL ^ heap key still gives heap key which is why we can just read it like that.</p>
 <h4 id="libc-leak">Libc Leak:</h4>
 <p>The libc leak is your standard unsorted bin leak, where you leak the <code>main_arena+96</code> address.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>alloc(<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1056</span>)
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>alloc(<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1056</span>)
 </span></span><span style="display:flex;"><span>alloc(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">16</span>)
 </span></span><span style="display:flex;"><span>free(<span style="color:#ae81ff">0</span>)
 </span></span><span style="display:flex;"><span>read()
