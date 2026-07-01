@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en"><head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+    <title>Waheyyyyyyy</title>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <meta content="utf-8" http-equiv="encoding">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="theme-color" content="#000084" />
+    <link rel="icon" href="http://localhost:1313//favicon.ico">
+    <link rel="canonical" href="http://localhost:1313/">
+    
+    
+</head>
+<body>
+<nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+        <div class="container">
+            <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse"></button>
+            <a class="brand" href="http://localhost:1313/">Waheyyyyyyy</a>
+            <div class="nav-collapse collapse">
+                <ul class="nav">
+                    
+                    
+                        
+                            <li>
+                                <a href="/about/">
+                                    
+                                    <span>About</span>
+                                </a>
+                            </li>
+                        
+                    
+                        
+                            <li>
+                                <a href="/post/">
+                                    
+                                    <span>Posts</span>
+                                </a>
+                            </li>
+                        
+                    
+                        
+                            <li>
+                                <a href="/categories/writeup/">
+                                    
+                                    <span>Writeups</span>
+                                </a>
+                            </li>
+                        
+                    
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav><div id="content" class="container">
+
+<div class="row-fluid navmargin">
+    <div class="page-header">
+        <h1>Procrastination is my salvation - msg_msg exploitation - Wed, Jul 1, 2026</h1>
+    </div>
+    <p class="lead"></p>
+    <h4 id="introduction">Introduction:</h4>
+<p>In my never-ending quest to do literally anything but schoolwork, I&rsquo;ve gone back into the beautiful kpwn grind. I solved 3 challenges and will continue to procrastinate by posting writeups about them whenever I can, with the first challenge being Fire Of Salvation.</p>
+<h4 id="table-of-contents">Table of Contents:</h4>
+<ol>
+<li>Vulnerability Analysis</li>
+<li>Protections</li>
+<li><code>msg_msg</code> stuff</li>
+<li>Attack plan and thought process</li>
+<li>Exploitation</li>
+</ol>
+<h4 id="vulnerability-analysis">Vulnerability Analysis:</h4>
+<p>This is a classic challenge which was my introduction into AAW and AAR with the <code>msg_msg</code> struct.</p>
+<p>The ioctl module revolves around letting users make firewall rules. The firewall rule object is allocated into <code>kmalloc-4K</code> which just so happens to be a size that can <code>msg_msg</code> fits into as well.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">typedef</span> <span style="color:#66d9ef">struct</span>
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> iface[<span style="color:#ae81ff">16</span>];
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> name[<span style="color:#ae81ff">16</span>];
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint32_t</span> ip;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint32_t</span> netmask;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint16_t</span> proto;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint16_t</span> port;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint8_t</span> action;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint8_t</span> is_duplicated;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> desc[DESC_MAX]; <span style="color:#75715e">//DESC_MAX = 0x800
+</span></span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">rule_t</span>;
+</span></span></code></pre></div><p>The UAF lies in the the <code>dup_rule</code> feature which allows you to dup an inbound rule to another array which holds the outbound rules, vice versa.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">static</span> <span style="color:#66d9ef">long</span> <span style="color:#a6e22e">firewall_add_rule</span>(<span style="color:#66d9ef">user_rule_t</span> user_rule, <span style="color:#66d9ef">rule_t</span> <span style="color:#f92672">**</span>firewall_rules, <span style="color:#66d9ef">uint8_t</span> idx)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;[Firewall::Info] firewall_add_rule() adding new rule!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (firewall_rules[idx] <span style="color:#f92672">!=</span> NULL)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;[Firewall::Error] firewall_add_rule() invalid rule slot!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> ERROR;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    firewall_rules[idx] <span style="color:#f92672">=</span> (<span style="color:#66d9ef">rule_t</span> <span style="color:#f92672">*</span>)<span style="color:#a6e22e">kzalloc</span>(<span style="color:#66d9ef">sizeof</span>(<span style="color:#66d9ef">rule_t</span>), GFP_KERNEL);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>firewall_rules[idx])
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;[Firewall::Error] firewall_add_rule() allocation error!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> ERROR;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// code continues but its just copying the fields to the object
+</span></span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">static</span> <span style="color:#66d9ef">long</span> <span style="color:#a6e22e">firewall_delete_rule</span>(<span style="color:#66d9ef">user_rule_t</span> user_rule, <span style="color:#66d9ef">rule_t</span> <span style="color:#f92672">**</span>firewall_rules, <span style="color:#66d9ef">uint8_t</span> idx)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;[Firewall::Info] firewall_delete_rule() deleting rule!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (firewall_rules[idx] <span style="color:#f92672">==</span> NULL)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;[Firewall::Error] firewall_delete_rule() invalid rule slot!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> ERROR;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">kfree</span>(firewall_rules[idx]);
+</span></span><span style="display:flex;"><span>    firewall_rules[idx] <span style="color:#f92672">=</span> NULL;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> SUCCESS;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>As you can see here the delete rule actually nulls out the free after and is safe.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">static</span> <span style="color:#66d9ef">long</span> <span style="color:#a6e22e">firewall_dup_rule</span>(<span style="color:#66d9ef">user_rule_t</span> user_rule, <span style="color:#66d9ef">rule_t</span> <span style="color:#f92672">**</span>firewall_rules, <span style="color:#66d9ef">uint8_t</span> idx)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">uint8_t</span> i;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">rule_t</span> <span style="color:#f92672">**</span>dup;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;[Firewall::Info] firewall_dup_rule() duplicating rule!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    dup <span style="color:#f92672">=</span> (user_rule.type <span style="color:#f92672">==</span> INBOUND) <span style="color:#f92672">?</span> firewall_rules_out : firewall_rules_in;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (firewall_rules[idx] <span style="color:#f92672">==</span> NULL)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;[Firewall::Error] firewall_dup_rule() nothing to duplicate!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> ERROR;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (firewall_rules[idx]<span style="color:#f92672">-&gt;</span>is_duplicated)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;[Firewall::Info] firewall_dup_rule() rule already duplicated before!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> ERROR;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> (i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> MAX_RULES; i<span style="color:#f92672">++</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (dup[i] <span style="color:#f92672">==</span> NULL)
+</span></span><span style="display:flex;"><span>        {
+</span></span><span style="display:flex;"><span>            dup[i] <span style="color:#f92672">=</span> firewall_rules[idx];
+</span></span><span style="display:flex;"><span>            firewall_rules[idx]<span style="color:#f92672">-&gt;</span>is_duplicated <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;[Firewall::Info] firewall_dup_rule() rule duplicated!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> SUCCESS;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;[Firewall::Error] firewall_dup_rule() nowhere to duplicate!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> ERROR;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>If you allocate an inbound rule then duplicate it to the outbound rule array and then proceed to free the inbound rule you just created, you will have a UAF as the rule is still accessible via the outbound rule array but it is freed.</p>
+<p>maybe diagram? showing uaf?</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">static</span> <span style="color:#66d9ef">long</span> <span style="color:#a6e22e">firewall_edit_rule</span>(<span style="color:#66d9ef">user_rule_t</span> user_rule, <span style="color:#66d9ef">rule_t</span> <span style="color:#f92672">**</span>firewall_rules, <span style="color:#66d9ef">uint8_t</span> idx)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;[Firewall::Info] firewall_edit_rule() editing rule!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;[Firewall::Error] Note that description editing is not implemented.</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (firewall_rules[idx] <span style="color:#f92672">==</span> NULL)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;[Firewall::Error] firewall_edit_rule() invalid idx!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> ERROR;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">memcpy</span>(firewall_rules[idx]<span style="color:#f92672">-&gt;</span>iface, user_rule.iface, <span style="color:#ae81ff">16</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">memcpy</span>(firewall_rules[idx]<span style="color:#f92672">-&gt;</span>name, user_rule.name, <span style="color:#ae81ff">16</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">in4_pton</span>(user_rule.ip, <span style="color:#a6e22e">strnlen</span>(user_rule.ip, <span style="color:#ae81ff">16</span>), (u8 <span style="color:#f92672">*</span>)<span style="color:#f92672">&amp;</span>(firewall_rules[idx]<span style="color:#f92672">-&gt;</span>ip), <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, NULL) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">printk</span>(KERN_ERR <span style="color:#e6db74">&#34;[Firewall::Error] firewall_edit_rule() invalid IP format!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> ERROR;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">in4_pton</span>(user_rule.netmask, <span style="color:#a6e22e">strnlen</span>(user_rule.netmask, <span style="color:#ae81ff">16</span>), (u8 <span style="color:#f92672">*</span>)<span style="color:#f92672">&amp;</span>(firewall_rules[idx]<span style="color:#f92672">-&gt;</span>netmask), <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, NULL) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">printk</span>(KERN_ERR <span style="color:#e6db74">&#34;[Firewall::Error] firewall_edit_rule() invalid Netmask format!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> ERROR;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    firewall_rules[idx]<span style="color:#f92672">-&gt;</span>proto <span style="color:#f92672">=</span> user_rule.proto;
+</span></span><span style="display:flex;"><span>    firewall_rules[idx]<span style="color:#f92672">-&gt;</span>port <span style="color:#f92672">=</span> <span style="color:#a6e22e">ntohs</span>(user_rule.port);
+</span></span><span style="display:flex;"><span>    firewall_rules[idx]<span style="color:#f92672">-&gt;</span>action <span style="color:#f92672">=</span> user_rule.action;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printk</span>(KERN_ERR <span style="color:#e6db74">&#34;[Firewall::Info] firewall_edit_rule() rule edited!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> SUCCESS;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>In <code>edit_rule</code>, we get to freely write whatever we want to <code>iface</code> and <code>name</code> however to write to <code>ip</code> and <code>netmask</code> we must encode our value into a IP address format.</p>
+<h4 id="protections">Protections:</h4>
+<p>Regarding protections, I will just go through a few important ones.</p>
+<ol>
+<li><strong>CONFIG_SYSVIPC</strong> is set so there are msg_msg structs. (The entire point of the challenge)</li>
+<li><strong>FG-KASLR</strong> is enabled so a regular kernel text leak will not work.</li>
+<li><strong>CONFIG_STATIC_USERMODEHELPER</strong> is enabled so no more modprobe path overwrite (crine).</li>
+<li><strong>CONFIG_SLAB_FREELIST_RANDOM</strong> is enabled so freed objects will be reclaimed in a random order which requires me to spray instead.</li>
+</ol>
+<p>Of courses, there&rsquo;s your usual <strong>SMAP</strong> <strong>SMEP</strong> <strong>KPTI</strong> and <strong>KASLR</strong>.</p>
+<h4 id="msg_msg-stuff">MSG_MSG stuff:</h4>
+<p><code>msg_msg</code> comes from the inter-process control system on Linux blah blah blah. I only care about the exploitation capability so we shall talk about that.</p>
+<p>The size of the <code>msg_msg</code> struct can range from 0x40 to 0x1000 bytes and looks like this.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> msg_msg {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> list_head m_list;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">long</span> m_type;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">size_t</span> m_ts;        <span style="color:#75715e">/* message text size */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> msg_msgseg <span style="color:#f92672">*</span>next;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>security; <span style="color:#75715e">// will be null if no selinux is used
+</span></span></span><span style="display:flex;"><span>    <span style="color:#75715e">/* the actual message follows immediately */</span>
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p>You can create <code>msg_msg</code> structs by making a message queue in userspace with <code>msgget(IPC_PRIVATE , IPC_CREAT | 0600);</code> and then calling <code>msgsnd(qid, buf, size, 0);</code> to send messages.</p>
+<p>This creates a <code>msg_msg</code> struct in the kernel heap of size <code>0x30 + sizeof(msg)</code> with 0x30 being the metadata of the struct.</p>
+<p>Messages go into a queue and are then returned to the user when <code>msgrcv(qid, rcvbuf , sizeof(rcvbuf), 0, IPC_NOWAIT | MSG_COPY | MSG_NOERROR)</code> is called.</p>
+<p><strong>IPC_NOWAIT</strong> means that if there are no messages the kernel will return <code>ENOMSG</code> instead of blocking the thread.</p>
+<p><strong>MSG_COPY</strong> can be used when <code>CONFIG_CHECKPOINT_RESTORE</code> is set which allows for the kernel to return a copy of the message instead of destroying it, maintaining the queue.</p>
+<p><strong>MSG_NOERROR</strong> just makes sure the message truncates instead of failing if the message is too long.</p>
+<p>If the message is larger than 0x1000, then a <code>msg_msgseg</code> will be allocated which is the next segment of the message. It is like a linked list (neuron activation).</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> msg_msgseg {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> msg_msgseg <span style="color:#f92672">*</span>next;
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/* the next part of the message follows immediately */</span>
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><h5 id="getting-an-arbitrary-address-read-aar">Getting an Arbitrary Address Read (AAR):</h5>
+<p>To get an arbitrary read, we can just overwrite the <code>next</code> field in the <code>msg_msg</code> and then read it back as long as <code>m_ts</code> is large enough to read into the next segment which will be the address you put.</p>
+<p>However to even get an address to overwrite with, you will need a leak first. We can get a leak by controlling the size of the <code>msg_msg</code> so that <code>msg_msgseg</code> gets allocated from another cache like <code>kmalloc-32</code> for example, then we increase <code>m_ts</code> so that we can read past that <code>msg_msgseg</code> into adjacent objects which may container kernel pointers which will be our leak.</p>
+<h5 id="getting-an-arbtrary-address-write-aaw">Getting an Arbtrary Address Write (AAW):</h5>
+<p>The arbitrary write is a little more complicated. The idea is to make use</p>
+
+    <h4><a href="http://localhost:1313/">Back to Home</a></h4>
+</div>
+
+
+        </div><footer class="container">
+    <hr class="soften">
+    <p>
+&copy; 
+
+    Waheyy
+
+<span id="thisyear">2026</span>
+
+
+        | Built on <a href="//gohugo.io" target="_blank">Hugo</a>
+
+</p>
+    <p class="text-center">
+        
+        
+        
+        <a href="https://github.com/Waheyy">GitHub</a> 
+        
+    </p>
+</footer>
+
+</body><link rel="stylesheet" href="/css/bootstrap.css">
+<link rel="stylesheet" href="/css/bootstrap-responsive.css">
+<link rel="stylesheet" href="/css/style.css">
+
+<script src="/js/jquery.js"></script>
+<script src="/js/bootstrap-386.js"></script>
+<script src="/js/bootstrap-transition.js"></script>
+<script src="/js/bootstrap-alert.js"></script>
+<script src="/js/bootstrap-modal.js"></script>
+<script src="/js/bootstrap-dropdown.js"></script>
+<script src="/js/bootstrap-scrollspy.js"></script>
+<script src="/js/bootstrap-tab.js"></script>
+<script src="/js/bootstrap-tooltip.js"></script>
+<script src="/js/bootstrap-popover.js"></script>
+<script src="/js/bootstrap-button.js"></script>
+<script src="/js/bootstrap-collapse.js"></script>
+<script src="/js/bootstrap-carousel.js"></script>
+<script src="/js/bootstrap-typeahead.js"></script>
+<script src="/js/bootstrap-affix.js"></script>
+<script>
+    _386 = { 
+        fastLoad: false ,
+        onePass: false , 
+        speedFactor: 1 
+    };
+
+    
+    function ThisYear() {
+        document.getElementById('thisyear').innerHTML = new Date().getFullYear();
+    };
+</script>
+</html>
