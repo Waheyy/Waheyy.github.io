@@ -15,8 +15,7 @@ In my never-ending quest to do literally anything but schoolwork, I've gone back
 1. Vulnerability Analysis
 1. Protections
 1. `msg_msg` stuff
-1. Attack plan and thought process
-1. Exploitation
+1. exploitation
 
 #### Vulnerability Analysis:
 
@@ -219,12 +218,44 @@ struct msg_msgseg {
 };
 ```
 
-##### Getting an Arbitrary Address Read (AAR):
+
+#### Getting an Arbitrary Address Read (AAR):
 
 To get an arbitrary read, we can just overwrite the `next` field in the `msg_msg` and then read it back as long as `m_ts` is large enough to read into the next segment which will be the address you put.
 
 However to even get an address to overwrite with, you will need a leak first. We can get a leak by controlling the size of the `msg_msg` so that `msg_msgseg` gets allocated from another cache like `kmalloc-32` for example, then we increase `m_ts` so that we can read past that `msg_msgseg` into adjacent objects which may container kernel pointers which will be our leak.
 
-##### Getting an Arbtrary Address Write (AAW):
 
-The arbitrary write is a little more complicated. The idea is to make use
+#### Getting an Arbtrary Address Write (AAW):
+
+The arbitrary write is a little more complicated. The idea is to allocate a large message which causes a `msg_msgseg` to be allocated, before the message continues to the `msg_msgseg` you can edit the `next` pointer to the target address, causing your data to be written instead. A race condition. You can use the standard ways to extend the race, `USERFAULTFD`, `shmem`, `FUSE`.
+
+Note: The addresses must start with a NULL QWORD so that there will not be another random linked list traversals.
+
+#### Exploitation:
+
+So the plan is simple, we get a UAF overlap with a `msg_msg` struct then I get an arbwrite and arbread.
+
+Due to `FG-KASLR`, we must leak a pointer from the data section of the kernel. We can spray and read the `shm_file_data` objects which have a pointer to the data section in the `ipc_namespace` pointer.
+
+Using our UAF, we can change the `m_ts` field in our victim and then use `msgrcv()` to do our out of bounds read to the adjacent `shm_file_data` we sprayed beforehand.
+
+Now we have our leaks, we can do our arbwrite but to where???? There is no modprobe path overwrite so what are my other targets?
+
+We can overwrite the current task's cred and real_cred field to be `init_cred` instead but that requires to do task walking (very annoying).
+
+Since symbols were provided (thank god) we can calculate the addresses of `init_task` and `init_cred`.
+
+We use the UAF again to leak `init_task` and then use the linked list within till we find our current task. Once we find our current task we can overwrite the cred fields with `init_cred` and then profit YIPEE.
+
+
+Very cool challenge. First time using `msg_msg` and userfaultfd.
+
+References:
+
+https://blog.smallkirby.com/posts/fire-of-salvation/
+
+https://www.willsroot.io/2021/08/corctf-2021-fire-of-salvation-writeup.html
+
+
+

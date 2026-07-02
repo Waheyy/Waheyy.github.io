@@ -66,8 +66,7 @@
 <li>Vulnerability Analysis</li>
 <li>Protections</li>
 <li><code>msg_msg</code> stuff</li>
-<li>Attack plan and thought process</li>
-<li>Exploitation</li>
+<li>exploitation</li>
 </ol>
 <h4 id="vulnerability-analysis">Vulnerability Analysis:</h4>
 <p>This is a classic challenge which was my introduction into AAW and AAR with the <code>msg_msg</code> struct.</p>
@@ -224,11 +223,24 @@
 </span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> msg_msgseg <span style="color:#f92672">*</span>next;
 </span></span><span style="display:flex;"><span>    <span style="color:#75715e">/* the next part of the message follows immediately */</span>
 </span></span><span style="display:flex;"><span>};
-</span></span></code></pre></div><h5 id="getting-an-arbitrary-address-read-aar">Getting an Arbitrary Address Read (AAR):</h5>
+</span></span></code></pre></div><h4 id="getting-an-arbitrary-address-read-aar">Getting an Arbitrary Address Read (AAR):</h4>
 <p>To get an arbitrary read, we can just overwrite the <code>next</code> field in the <code>msg_msg</code> and then read it back as long as <code>m_ts</code> is large enough to read into the next segment which will be the address you put.</p>
 <p>However to even get an address to overwrite with, you will need a leak first. We can get a leak by controlling the size of the <code>msg_msg</code> so that <code>msg_msgseg</code> gets allocated from another cache like <code>kmalloc-32</code> for example, then we increase <code>m_ts</code> so that we can read past that <code>msg_msgseg</code> into adjacent objects which may container kernel pointers which will be our leak.</p>
-<h5 id="getting-an-arbtrary-address-write-aaw">Getting an Arbtrary Address Write (AAW):</h5>
-<p>The arbitrary write is a little more complicated. The idea is to make use</p>
+<h4 id="getting-an-arbtrary-address-write-aaw">Getting an Arbtrary Address Write (AAW):</h4>
+<p>The arbitrary write is a little more complicated. The idea is to allocate a large message which causes a <code>msg_msgseg</code> to be allocated, before the message continues to the <code>msg_msgseg</code> you can edit the <code>next</code> pointer to the target address, causing your data to be written instead. A race condition. You can use the standard ways to extend the race, <code>USERFAULTFD</code>, <code>shmem</code>, <code>FUSE</code>.</p>
+<p>Note: The addresses must start with a NULL QWORD so that there will not be another random linked list traversals.</p>
+<h4 id="exploitation">Exploitation:</h4>
+<p>So the plan is simple, we get a UAF overlap with a <code>msg_msg</code> struct then I get an arbwrite and arbread.</p>
+<p>Due to <code>FG-KASLR</code>, we must leak a pointer from the data section of the kernel. We can spray and read the <code>shm_file_data</code> objects which have a pointer to the data section in the <code>ipc_namespace</code> pointer.</p>
+<p>Using our UAF, we can change the <code>m_ts</code> field in our victim and then use <code>msgrcv()</code> to do our out of bounds read to the adjacent <code>shm_file_data</code> we sprayed beforehand.</p>
+<p>Now we have our leaks, we can do our arbwrite but to where???? There is no modprobe path overwrite so what are my other targets?</p>
+<p>We can overwrite the current task&rsquo;s cred and real_cred field to be <code>init_cred</code> instead but that requires to do task walking (very annoying).</p>
+<p>Since symbols were provided (thank god) we can calculate the addresses of <code>init_task</code> and <code>init_cred</code>.</p>
+<p>We use the UAF again to leak <code>init_task</code> and then use the linked list within till we find our current task. Once we find our current task we can overwrite the cred fields with <code>init_cred</code> and then profit YIPEE.</p>
+<p>Very cool challenge. First time using <code>msg_msg</code> and userfaultfd.</p>
+<p>References:</p>
+<p><a href="https://blog.smallkirby.com/posts/fire-of-salvation/">https://blog.smallkirby.com/posts/fire-of-salvation/</a></p>
+<p><a href="https://www.willsroot.io/2021/08/corctf-2021-fire-of-salvation-writeup.html">https://www.willsroot.io/2021/08/corctf-2021-fire-of-salvation-writeup.html</a></p>
 
     <h4><a href="http://localhost:1313/">Back to Home</a></h4>
 </div>

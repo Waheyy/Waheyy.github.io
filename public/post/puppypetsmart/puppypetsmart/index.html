@@ -1,14 +1,13 @@
 <!DOCTYPE html>
-<html lang="en"><head>
-	<meta name="generator" content="Hugo 0.163.1">
+<html lang="en"><head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
     <title>Waheyyyyyyy</title>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
     <meta content="utf-8" http-equiv="encoding">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="format-detection" content="telephone=no" />
     <meta name="theme-color" content="#000084" />
-    <link rel="icon" href="https://waheyy.github.io//favicon.ico">
-    <link rel="canonical" href="https://waheyy.github.io/">
+    <link rel="icon" href="http://localhost:1313//favicon.ico">
+    <link rel="canonical" href="http://localhost:1313/">
     
     
 </head>
@@ -17,7 +16,7 @@
     <div class="navbar-inner">
         <div class="container">
             <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse"></button>
-            <a class="brand" href="https://waheyy.github.io/">Waheyyyyyyy</a>
+            <a class="brand" href="http://localhost:1313/">Waheyyyyyyy</a>
             <div class="nav-collapse collapse">
                 <ul class="nav">
                     
@@ -57,71 +56,29 @@
 
 <div class="row-fluid navmargin">
     <div class="page-header">
-        <h1>Welcome to Waheyland</h1>
+        <h1>Puppypetsmart for Lag N Crash 6.0 - Fri, Mar 20, 2026</h1>
     </div>
-</div>
-
-<div class="row-fluid">
-    <div class="span9 bs-docs-sidebar">
-        <p class="lead">I am soon to be the best pwner ever</p>
-        <p></p>
-        <p>I like pwning, hamsters and games</p>
-        <p></p>
-        <hr class="soften">
-        <p></p>
-        <h1>Blog posts</h1>
-        <ul>
-            
-            
-            <li><a href="https://waheyy.github.io/post/fsophammer/fsophammerwriteup/">2026-04-22 | Fsophammer and fengshui</a></li>
-            
-            
-            
-            <li><a href="https://waheyy.github.io/post/labubu/labubu/">2025-12-31 | NYP Dec CTF 2025 Labubu 3 different ways</a></li>
-            
-            
-            
-            <li><a href="https://waheyy.github.io/post/secretstorage/secretstoragewriteup/">2025-10-26 | AYCEP2025 verysecretstorage Modprobe Path overwrite</a></li>
-            
-            
-            
-            <li><a href="https://waheyy.github.io/post/liardancer/liardancerwriteup/">2025-07-17 | NYP Infosec June CTF 2025 Liardancer Writeup</a></li>
-            
-            
-        </ul>
-    </div>
-
-    <div class="span3 bs-docs-sidebar">
-        <h1>Categories</h1>
-        <ul class="nav nav-list bs-docs-sidenav">
-            
-<li>
-    <a href="https://waheyy.github.io/categories/writeup/">Writeup</a>
-</li>
-
-<li>
-    <a href="https://waheyy.github.io/categories/ctf/">CTF</a>
-</li>
-
-        </ul>
-        <p></p>
-        <h1>Tags</h1>
-        <ul class="nav nav-list bs-docs-sidenav">
-            
-<li>
-    <a href="https://waheyy.github.io/tags/heap/">Heap</a>
-</li>
-
-<li>
-    <a href="https://waheyy.github.io/tags/pwn/">Pwn</a>
-</li>
-
-<li>
-    <a href="https://waheyy.github.io/tags/kernel/">Kernel</a>
-</li>
-
-        </ul>
-    </div>
+    <p class="lead"></p>
+    <h4 id="introduction">Introduction:</h4>
+<p>Welcome everybody, this is my third post on tcache poison, I seem to really like it&hellip; The tcache slop this time shall be on my challenge that was written for LNC6.0</p>
+<p>This was meant to be a kpwn challenge but I was told the CTF was too short and I also got skill issued on my own challenge so we have to make do with this.</p>
+<h4 id="prerequisites">Prerequisites:</h4>
+<p>Go read this post on the basics of tcache poisoning.</p>
+<p>As usual, the binary will have <strong>FULL RELRO</strong> protection enabled, the binary&rsquo;s <strong>Global Offset Table</strong> (GOT) cannot be written to, so we shall do some Mile Cream Oriented Programming (Thank you sensei).</p>
+<h4 id="source-code-review">Source Code Review:</h4>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>show make
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>show name
+</span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010">```</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010">```</span>c
+</span></span><span style="display:flex;"><span>show sell
+</span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010">```</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010">```</span>c
+</span></span><span style="display:flex;"><span>show read
+</span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010">```</span>
+</span></span></code></pre></div>
+    <h4><a href="http://localhost:1313/">Back to Home</a></h4>
 </div>
 
 
