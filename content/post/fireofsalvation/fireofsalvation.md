@@ -238,6 +238,15 @@ So the plan is simple, we get a UAF overlap with a `msg_msg` struct then I get a
 
 Due to `FG-KASLR`, we must leak a pointer from the data section of the kernel. We can spray and read the `shm_file_data` objects which have a pointer to the data section in the `ipc_namespace` pointer.
 
+```c
+struct shm_file_data {
+	int id;
+	struct ipc_namespace *ns; //this fella
+	struct file *file;
+	const struct vm_operations_struct *vm_ops;
+};
+```
+
 Using our UAF, we can change the `m_ts` field in our victim and then use `msgrcv()` to do our out of bounds read to the adjacent `shm_file_data` we sprayed beforehand.
 
 Now we have our leaks, we can do our arbwrite but to where????
@@ -248,8 +257,9 @@ We can overwrite the current task's cred and real_cred field to be `init_cred` i
 
 Since symbols were provided (thank god) we can calculate the addresses of `init_task` and `init_cred`.
 
-We use the UAF again to leak `init_task` and then use the linked list within till we find our current task. Once we find our current task we can overwrite the cred fields with `init_cred` and then profit YIPEE.
+We use the UAF again to leak `init_task` and then traverse the task linked list till we find our current task. Once we find our current task we can overwrite the cred fields with `init_cred` and then profit YIPEE.
 
+![win](/post/fireofsalvation/images/flag.png)
 
 Very cool challenge. First time using `msg_msg` and userfaultfd.
 
