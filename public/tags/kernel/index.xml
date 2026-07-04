@@ -10,9 +10,16 @@
 		
 		
 		
-			<lastBuildDate>Sun, 26 Oct 2025 21:39:54 +0800</lastBuildDate>
+			<lastBuildDate>Wed, 01 Jul 2026 19:14:52 +0800</lastBuildDate>
 		
 			<atom:link href="https://waheyy.github.io/tags/kernel/index.xml" rel="self" type="application/rss+xml" />
+			<item>
+				<title>Procrastination is my salvation - msg_msg exploitation</title>
+				<link>https://waheyy.github.io/post/fireofsalvation/fireofsalvation/</link>
+				<pubDate>Wed, 01 Jul 2026 19:14:52 +0800</pubDate>
+				<guid>https://waheyy.github.io/post/fireofsalvation/fireofsalvation/</guid>
+				<description>&lt;h4 id=&#34;introduction&#34;&gt;Introduction:&lt;/h4&gt;&#xA;&lt;p&gt;In my never-ending quest to do literally anything but schoolwork, I&amp;rsquo;ve gone back into the beautiful kpwn grind. I solved 3 challenges and will continue to procrastinate by posting writeups about them whenever I can, with the first challenge being Fire Of Salvation.&lt;/p&gt;&#xA;&lt;h4 id=&#34;table-of-contents&#34;&gt;Table of Contents:&lt;/h4&gt;&#xA;&lt;ol&gt;&#xA;&lt;li&gt;Vulnerability Analysis&lt;/li&gt;&#xA;&lt;li&gt;Protections&lt;/li&gt;&#xA;&lt;li&gt;&lt;code&gt;msg_msg&lt;/code&gt; stuff&lt;/li&gt;&#xA;&lt;li&gt;exploitation&lt;/li&gt;&#xA;&lt;/ol&gt;&#xA;&lt;h4 id=&#34;vulnerability-analysis&#34;&gt;Vulnerability Analysis:&lt;/h4&gt;&#xA;&lt;p&gt;This is a classic challenge which was my introduction into AAW and AAR with the &lt;code&gt;msg_msg&lt;/code&gt; struct.&lt;/p&gt;</description>
+			</item>
 			<item>
 				<title>AYCEP2025 verysecretstorage Modprobe Path overwrite</title>
 				<link>https://waheyy.github.io/post/secretstorage/secretstoragewriteup/</link>

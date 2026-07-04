@@ -1,6 +1,6 @@
 +++
 date = '2026-07-01T19:14:52+08:00'
-draft = true
+draft = false
 title = 'Procrastination is my salvation - msg_msg exploitation'
 categories = ["writeup"]
 tags = ["kernel", "pwn"]
@@ -240,7 +240,9 @@ Due to `FG-KASLR`, we must leak a pointer from the data section of the kernel. W
 
 Using our UAF, we can change the `m_ts` field in our victim and then use `msgrcv()` to do our out of bounds read to the adjacent `shm_file_data` we sprayed beforehand.
 
-Now we have our leaks, we can do our arbwrite but to where???? There is no modprobe path overwrite so what are my other targets?
+Now we have our leaks, we can do our arbwrite but to where????
+
+There is no modprobe path overwrite so what are my other targets?
 
 We can overwrite the current task's cred and real_cred field to be `init_cred` instead but that requires to do task walking (very annoying).
 
@@ -253,9 +255,10 @@ Very cool challenge. First time using `msg_msg` and userfaultfd.
 
 References:
 
+[my exploit](https://github.com/Waheyy/challenges/blob/main/fireofsalvation/exploit.c)
+
 https://blog.smallkirby.com/posts/fire-of-salvation/
 
 https://www.willsroot.io/2021/08/corctf-2021-fire-of-salvation-writeup.html
-
 
 
