@@ -128,7 +128,6 @@ static long firewall_dup_rule(user_rule_t user_rule, rule_t **firewall_rules, ui
 
 If you allocate an inbound rule then duplicate it to the outbound rule array and then proceed to free the inbound rule you just created, you will have a UAF as the rule is still accessible via the outbound rule array but it is freed.
 
-maybe diagram? showing uaf?
 
 ```c
 static long firewall_edit_rule(user_rule_t user_rule, rule_t **firewall_rules, uint8_t idx)
